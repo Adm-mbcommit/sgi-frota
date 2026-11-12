@@ -1,0 +1,10 @@
+# Desenvolvimento: só o banco. Rode API e web com `npm run dev`.
+services:
+  db:
+    image: postgres:16-alpine
+    environment: { POSTGRES_USER: sgi, POSTGRES_PASSWORD: sgi, POSTGRES_DB: sgi_frota }
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U sgi"], interval: 5s, retries: 10 }
+volumes:
+  pgdata:

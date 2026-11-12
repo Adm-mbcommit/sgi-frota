@@ -1,0 +1,23 @@
+{
+  "name": "sgi-frota",
+  "private": true,
+  "version": "0.1.0",
+  "description": "SGI Frota — Sistema de Gestão Interno da frota (Matias Brasil Engenharia)",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "npm run build -w @sgi/core && (npm run dev -w @sgi/api & npm run dev -w @sgi/web & wait)",
+    "build": "npm run build -w @sgi/core && npm run build -w @sgi/api && npm run build -w @sgi/web",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "db:up": "docker compose up -d db",
+    "db:migrate": "npm run db:migrate -w @sgi/api",
+    "db:seed": "npm run db:seed -w @sgi/api",
+    "vercel-build": "node scripts/vercel-build.mjs"
+  }
+}

@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+uploads/
+.DS_Store
+infra/backups/*
+!infra/backups/.gitkeep
+infra/.env.prod
+*.tsbuildinfo
+.vercel
