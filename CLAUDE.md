@@ -49,7 +49,12 @@ Neste ambiente de nuvem há PostgreSQL 16 local, mas ele pode parar entre comand
 - Variáveis no projeto: `DATABASE_URL*` (Neon), `JWT_SECRET`, `SEED_ADMIN_EMAIL`.
 - **Cuidado:** se `SEED_ADMIN_PASSWORD` estiver definida, *todo* deploy redefine a senha do administrador para esse valor.
   Ela deve ficar **removida**; só use temporariamente para recuperar acesso, e apague depois.
-- Mudanças grandes: branch + pull request, para o usuário testar no link de preview antes.
+- **Regra do usuário: toda mudança passa pelo preview antes.** Trabalhe sempre numa branch, acumule as alterações
+  nela e mande o usuário testar no link de preview. Nunca faça push, merge ou pull request para a `main` sem ele
+  pedir com todas as letras ("pode publicar"). Publique tudo de uma vez, não a cada alteração.
+- Preview com banco separado: ligue na Vercel (Storage → banco Neon → criar branch de banco para Preview) e defina
+  `MIGRATE_ON_PREVIEW=1` **só** depois de confirmar pela API que o preview tem um `DATABASE_URL` próprio
+  (variável com `gitBranch`). Sem isso, o preview usa o banco de produção e não pode aplicar migrações.
 - Esta sessão não acessa `*.vercel.app`; para verificar um deploy use a API da Vercel (estado e logs) e peça print ao usuário.
 
 ## Perfis
