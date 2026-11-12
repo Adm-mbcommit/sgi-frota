@@ -21,7 +21,7 @@ export default function Layout() {
   return (
     <div className="app">
       <nav className="side" aria-label="Módulos">
-        <div className="brand"><div className="logo"><img src="/logo.png" alt="Matias Brasil Engenharia" /></div><b>SGI Frota</b><span>Sistema de Gestão Interno</span></div>
+        <div className="brand"><div className="logo"><img src="/logo.png" alt="Matias Brasil Engenharia" /></div><b>SGI Matias Brasil</b><span>Sistema de Gestão Interno</span></div>
         {items.map((it) => typeof it === 'string'
           ? <div className="grp" key={it}>{it}</div>
           : <NavLink key={it[0]} to={it[0]} end={it[0] === '/'} className={({ isActive }) => (isActive ? 'act' : '')}>{it[1]}{it[2] && badge[it[2]] ? <i>{badge[it[2]]}</i> : null}</NavLink>)}

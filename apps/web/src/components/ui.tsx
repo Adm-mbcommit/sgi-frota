@@ -78,8 +78,8 @@ export function DataTable<T>({ rows, cols, filter, extra, limit = 300, maxh }: {
 /* ---------- formulário em diálogo ---------- */
 export interface Field { name: string; label: string; type?: 'text' | 'number' | 'date' | 'check' | 'select'; value?: unknown; step?: string; options?: [string, string][]; required?: boolean }
 
-export function FormDialog({ title, fields, onSave, onClose, extra }: {
-  title: string; fields: Field[]; onSave: (v: Record<string, string | boolean>) => Promise<unknown>; onClose: () => void; extra?: { label: string; run: () => Promise<unknown> };
+export function FormDialog({ title, fields, onSave, onClose, extra, note }: {
+  title: string; note?: string; fields: Field[]; onSave: (v: Record<string, string | boolean>) => Promise<unknown>; onClose: () => void; extra?: { label: string; run: () => Promise<unknown> };
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
@@ -96,6 +96,7 @@ export function FormDialog({ title, fields, onSave, onClose, extra }: {
         go(() => onSave(o));
       }}>
         <h3>{title}</h3>
+        {note && <p className="note" style={{ marginTop: 0 }}>{note}</p>}
         {fields.map((f) => f.type === 'check'
           ? <label key={f.name} className="fld chk"><input type="checkbox" name={f.name} defaultChecked={!!f.value} /> {f.label}</label>
           : f.type === 'select'

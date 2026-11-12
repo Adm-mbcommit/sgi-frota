@@ -11,7 +11,7 @@ export default function Login() {
         try { await login(String(f.get('email')), String(f.get('password'))); } catch (x) { setErr((x as Error).message); } finally { setBusy(false); }
       }}>
         <img src="/logo.png" alt="Matias Brasil Engenharia" />
-        <h1>SGI Frota</h1>
+        <h1>SGI Matias Brasil</h1>
         <label className="fld"><span>E-mail</span><input name="email" type="email" autoComplete="username" required /></label>
         <label className="fld"><span>Senha</span><input name="password" type="password" autoComplete="current-password" required /></label>
         {err && <div className="err">{err}</div>}

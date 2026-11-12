@@ -1,4 +1,4 @@
-# SGI Frota
+# SGI Matias Brasil
 
 Sistema de Gestão Interno da frota da **Matias Brasil Engenharia**. Evolução do artefato
 "SGI Frota Matias" (página única no Claude) para uma aplicação web com banco de dados,
@@ -7,7 +7,7 @@ login por usuário e perfis de acesso, pronta para rodar em um servidor externo.
 | Módulo | O que faz |
 |---|---|
 | Painel | KPIs do período (km, combustível, custo/km, excessos, alertas), cartões por veículo, ações necessárias, gráficos |
-| Manutenção | Plano por km, data e ritmo de uso; registrar serviço reinicia o prazo e pode lançar o custo |
+| Manutenção | Plano por km, data e ritmo de uso; o prazo recomeça pela aba Manutencao do Comando de Bordo ou por um custo de revisão/manutenção lançado em Custos |
 | Veículos / Motoristas / Documentos | Cadastros, apelidos de placa e de nome, CNH, CRLV/IPVA/licenciamento/seguro |
 | Viagens / Abastecimentos / Velocidade | Registros do Comando de Bordo e do Chronos, com validação automática |
 | Custos / Pendências | Custos além do combustível; lista de itens a confirmar e verificação da qualidade dos dados |

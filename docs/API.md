@@ -20,10 +20,10 @@ Datas de calendário em `AAAA-MM-DD`; instantes em ISO 8601. Listas aceitam `?fr
 | GET / POST / PATCH | /vehicles, /drivers, /stations | todos / ADMIN, GESTOR | Cadastros |
 | GET / PUT | /settings | todos / ADMIN | Parâmetros das regras |
 | GET / POST / PATCH | /maintenance/plan | todos / ADMIN, GESTOR | Plano de manutenção |
-| POST | /maintenance/plan/:id/records | ADMIN, GESTOR | Registrar serviço |
-| GET | /maintenance/records | todos | Histórico de serviços |
+| POST | /maintenance/plan/:id/records | ADMIN, GESTOR | Registrar serviço (sem custo) |
+| GET | /maintenance/records | todos | Histórico de serviços (`source`: COMANDO_BORDO ou SGI; `costId` se veio de Custos) |
 | GET / PUT | /documents, /documents/:vehicleId | todos / ADMIN, GESTOR | Documentos |
-| GET / POST / PATCH / DELETE | /costs | todos / ADMIN, GESTOR | Custos |
+| GET / POST / PATCH / DELETE | /costs | todos / ADMIN, GESTOR | Custos. `maintenance: { km, planItemIds }` liga o custo a itens do plano e atualiza o prazo |
 | GET / POST / PATCH | /tasks | todos / ADMIN, GESTOR | Pendências |
 | POST | /imports/comando-bordo | ADMIN, GESTOR | Upload .xlsx (campo `file`) |
 | POST | /imports/chronos | ADMIN, GESTOR | Upload .xlsx (campo `file`) |

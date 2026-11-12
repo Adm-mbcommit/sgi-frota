@@ -24,6 +24,8 @@ export interface Docs { plate: string; vehicleId: string; vehicleName: string; c
 export interface Driver { id: string; name: string; aliases: string[]; cnhExpiry: string | null; active: boolean }
 export interface DriverSummary { name: string; cnhExpiry: string | null; cnhStatus: string; trips: number; km: number; speedEvents: number; maxSpeed: number; fuelings: number; checklists: number }
 export interface Vehicle { id: string; plate: string; name: string; model: string | null; refKm: number; status: string; aliases: string[]; active: boolean }
-export interface Cost { id: string; date: string; vehicleId: string | null; vehicleName: string | null; category: string; description: string; supplier: string | null; amount: number | null; invoice: string | null; notes: string | null }
+export interface Cost { id: string; date: string; vehicleId: string | null; vehicleName: string | null; category: string; description: string; supplier: string | null; amount: number | null; invoice: string | null; notes: string | null;
+  maintenance: { km: number | null; planItemIds: string[]; items: string[] } | null }
+export interface MaintenanceRecord { id: string; date: string; km: number | null; vehicleName: string; item: string; supplier: string | null; invoice: string | null; notes: string | null; source: string; costId: string | null }
 export interface Task { id: string; title: string; description: string | null; status: string }
 export interface User { id: string; name: string; email: string; role: string; active: boolean; lastLoginAt: string | null }

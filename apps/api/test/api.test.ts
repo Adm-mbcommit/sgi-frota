@@ -92,14 +92,68 @@ d('API', () => {
     expect(plan.statusCode).toBe(201);
     let items = (await call('GET', '/maintenance/plan', reader)).json();
     expect(items[0].status).toBe('VENCIDO');
-    const rec = await call('POST', `/maintenance/plan/${plan.json().id}/records`, admin, { km: 45120, date: '2026-10-02', supplier: 'VIASERRA', amount: 350 });
+    const rec = await call('POST', `/maintenance/plan/${plan.json().id}/records`, admin, { km: 45120, date: '2026-10-02', supplier: 'VIASERRA' });
     expect(rec.statusCode).toBe(201);
     items = (await call('GET', '/maintenance/plan', reader)).json();
     expect(items[0]).toMatchObject({ status: 'OK', lastKm: 45120, nextKm: 55120 });
+    // Registrar não lança custo: o valor vai em Custos.
+    expect((await call('GET', '/costs', reader)).json()).toHaveLength(0);
 
     const dash = (await call('GET', '/dashboard?from=2026-10-01&to=2026-10-31', reader)).json();
-    expect(dash.kpis).toMatchObject({ km: 120, fuel: 280, otherCosts: 350, total: 630 });
+    expect(dash.kpis).toMatchObject({ km: 120, fuel: 280, otherCosts: 0, total: 280 });
     expect(dash.vehicles[0].currentKm).toBe(45120);
+  });
+
+  it('custo de revisão em Custos atualiza o plano sem duplicar', async () => {
+    const rg = await call('POST', '/maintenance/plan', admin, { vehicleId, item: 'Revisão geral', intervalKm: 10000, intervalMonths: 12, lastKm: 40000, lastDate: '2026-06-01' });
+    const body = { date: '2026-10-05', vehicleId, category: 'Manutenção', description: '5ª REVISÃO', supplier: 'VIASERRA', amount: 1500, maintenance: { km: 45200, planItemIds: [rg.json().id] } };
+    expect((await call('POST', '/costs', admin, { ...body, maintenance: { km: null, planItemIds: [rg.json().id] } })).statusCode).toBe(400);
+    const c = await call('POST', '/costs', admin, body);
+    expect(c.statusCode).toBe(201);
+    let item = (await call('GET', '/maintenance/plan', reader)).json().find((p: { item: string }) => p.item === 'Revisão geral');
+    expect(item).toMatchObject({ lastKm: 45200, lastDate: '2026-10-05', nextKm: 55200 });
+    const costs = (await call('GET', '/costs', reader)).json();
+    expect(costs).toHaveLength(1);
+    expect(costs[0].maintenance).toMatchObject({ km: 45200, items: ['Revisão geral'] });
+
+    // Editar o custo mantém um só registro no histórico.
+    expect((await call('PATCH', `/costs/${c.json().id}`, admin, { amount: 1600, maintenance: { km: 45210, planItemIds: [rg.json().id] } })).statusCode).toBe(200);
+    let hist = (await call('GET', '/maintenance/records', reader)).json().filter((r: { item: string }) => r.item === 'Revisão geral');
+    expect(hist).toHaveLength(1);
+    item = (await call('GET', '/maintenance/plan', reader)).json().find((p: { item: string }) => p.item === 'Revisão geral');
+    expect(item.lastKm).toBe(45210);
+
+    // Excluir o custo tira o registro do histórico.
+    expect((await call('DELETE', `/costs/${c.json().id}`, admin)).statusCode).toBe(204);
+    hist = (await call('GET', '/maintenance/records', reader)).json().filter((r: { item: string }) => r.item === 'Revisão geral');
+    expect(hist).toHaveLength(0);
+  });
+
+  it('importa a aba Manutencao do Comando de Bordo sem voltar prazos', async () => {
+    const wb = new ExcelJS.Workbook();
+    wb.addWorksheet('Registros').addRow(['Saída']);
+    wb.addWorksheet('Abastecimentos').addRow(['Data']);
+    const m = wb.addWorksheet('Manutencao');
+    m.addRow(['Empresa', 'Veículo', 'Placa', 'KM Atual', 'Item', 'Última Manutenção KM', 'Intervalo KM', 'Próxima', 'Restante', 'Status', 'Data da última Manutenção']);
+    m.addRow(['Matias Brasil', 'Saveiro', 'TPR - 0F55', '46.000km', 'Troca do Oleo', '30.000km', '10.000km', null, null, 'Vencido', '01/05/2026']); // mais antigo: ignora
+    m.addRow(['Matias Brasil', 'Saveiro', 'TPR - 0F55', '46.000km', 'Revisão Geral', '45.900km', '10.000km', null, null, 'OK', '20/10/2026']); // mais novo: aplica
+    m.addRow(['Matias Brasil', 'Saveiro', 'TPR - 0F55', '46.000km', 'Pneus', null, '40.000km', null, null, 'Pendente informação', null]); // vazio: ignora
+    m.addRow(['Santos', 'Strada', 'MLO - 5H87', '1km', 'Pneus', '1km', '40.000km', null, null, 'OK', '01/01/2026']); // placa não cadastrada
+    const buf = Buffer.from(await wb.xlsx.writeBuffer());
+    const boundary = '----sgi';
+    const payload = Buffer.concat([
+      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="cb.xlsx"\r\nContent-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\r\n\r\n`),
+      buf, Buffer.from(`\r\n--${boundary}--\r\n`)]);
+    const up = () => app.inject({ method: 'POST', url: '/api/v1/imports/comando-bordo', headers: { authorization: 'Bearer ' + admin, 'content-type': `multipart/form-data; boundary=${boundary}` }, payload });
+    const r1 = await up();
+    expect(r1.statusCode).toBe(200);
+    expect(r1.json().manutencao).toEqual({ atualizados: 1, semMudanca: 1, semVeiculo: 1, novosItens: 0 });
+    expect((await up()).json().manutencao).toMatchObject({ atualizados: 0, semMudanca: 2 });
+    const plan = (await call('GET', '/maintenance/plan', reader)).json();
+    expect(plan.find((p: { item: string }) => p.item === 'Troca do óleo')).toMatchObject({ lastKm: 45120 });
+    expect(plan.find((p: { item: string }) => p.item === 'Revisão geral')).toMatchObject({ lastKm: 45900, lastDate: '2026-10-20' });
+    const hist = (await call('GET', '/maintenance/records', reader)).json();
+    expect(hist.filter((r: { source: string }) => r.source === 'COMANDO_BORDO')).toHaveLength(1);
   });
 
   it('restringe usuários e auditoria ao administrador', async () => {

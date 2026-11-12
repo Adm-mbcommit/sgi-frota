@@ -1,4 +1,4 @@
-# SGI Frota — guia para o Claude
+# SGI Matias Brasil (antigo SGI Frota) — guia para o Claude
 
 Sistema de gestão da frota da Matias Brasil Engenharia (4 veículos, ~8 motoristas).
 Nasceu do artefato "SGI Frota Matias" (página única no Claude); `legacy/` guarda o original e o snapshot de dados.

@@ -1,10 +1,10 @@
 /** Custos, pendências, importações e usuários. */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, upload } from '../lib/api';
 import { fd, fdt, nf, rs, todayIso } from '../lib/format';
 import { useAuth, WRITE } from '../lib/auth';
-import type { Cost, Task, User, Vehicle } from '../lib/types';
+import type { Cost, PlanItem, Task, User, Vehicle } from '../lib/types';
 import { Chip, DataTable, FormDialog, Header, Loading, nn, num } from '../components/ui';
 
 export function Custos() {
@@ -15,7 +15,7 @@ export function Custos() {
   const [edit, setEdit] = useState<Partial<Cost> | null>(null);
   return (
     <>
-      <Header title="Custos" sub="Custos além do combustível. O combustível vem dos abastecimentos." />
+      <Header title="Custos" sub="Custos além do combustível (o combustível vem dos abastecimentos). Numa revisão ou manutenção, marque os itens feitos: o prazo deles recomeça na tela Manutenção." />
       <Loading q={q} />
       {q.data && <DataTable rows={q.data} filter={{ label: 'Todas as categorias', v: (r) => r.category }}
         extra={can(...WRITE) && <button className="btn" onClick={() => setEdit({ date: todayIso(), category: 'Manutenção' })}>Novo custo</button>} cols={[
@@ -23,24 +23,76 @@ export function Custos() {
           { h: 'Descrição', v: (r) => r.description }, { h: 'Fornecedor', v: (r) => r.supplier },
           { h: 'Valor', v: (r) => r.amount, f: (r) => (r.amount == null ? <span className="chip conf">preencher</span> : rs(r.amount)), n: true },
           { h: 'NF / observação', v: (r) => [r.invoice, r.notes].filter(Boolean).join(' · '), w: true },
+          { h: 'Itens do plano', v: (r) => r.maintenance?.items.join(', ') ?? '', f: (r) => r.maintenance ? <span title={r.maintenance.items.join(', ')}>{r.maintenance.items.length} {r.maintenance.items.length === 1 ? 'item' : 'itens'} · {nf(r.maintenance.km)} km</span> : null },
           { h: '', v: () => '', f: (r) => can(...WRITE) && <button className="btn sm" onClick={() => setEdit(r)}>Editar</button> },
         ]} />}
-      {edit && <FormDialog title={edit.id ? 'Editar custo' : 'Novo custo'} onClose={() => setEdit(null)}
-        extra={edit.id ? { label: 'Excluir', run: async () => { if (confirm('Excluir este custo?')) { await api(`/costs/${edit.id}`, { method: 'DELETE' }); await qc.invalidateQueries(); } } } : undefined}
-        fields={[
-          { name: 'date', label: 'Data', type: 'date', value: edit.date, required: true },
-          { name: 'vehicleId', label: 'Veículo', type: 'select', value: edit.vehicleId ?? '', options: [['', '(sem veículo)'], ...(vs.data ?? []).map((v) => [v.id, v.name] as [string, string])] },
-          { name: 'category', label: 'Categoria', type: 'select', value: edit.category, options: (cats.data ?? []).map((c) => [c, c] as [string, string]) },
-          { name: 'description', label: 'Descrição', value: edit.description, required: true }, { name: 'supplier', label: 'Fornecedor', value: edit.supplier },
-          { name: 'amount', label: 'Valor (R$)', type: 'number', step: '0.01', value: edit.amount }, { name: 'invoice', label: 'Nota fiscal', value: edit.invoice },
-          { name: 'notes', label: 'Observação', value: edit.notes },
-        ]}
-        onSave={async (o) => {
-          const body = { date: o.date, vehicleId: nn(o.vehicleId), category: o.category, description: o.description, supplier: nn(o.supplier), amount: num(o.amount), invoice: nn(o.invoice), notes: nn(o.notes) };
-          await api(edit.id ? `/costs/${edit.id}` : '/costs', { method: edit.id ? 'PATCH' : 'POST', json: body });
-          await qc.invalidateQueries();
-        }} />}
+      {edit && <CostDialog cost={edit} vehicles={vs.data ?? []} categories={cats.data ?? []} onClose={() => setEdit(null)} />}
     </>
+  );
+}
+
+const MAINT_CATS = ['Manutenção', 'Pneus'];
+
+/**
+ * Formulário de custo. Em Manutenção/Pneus mostra os itens do plano do veículo:
+ * os marcados entram no histórico e o prazo deles recomeça (a revisão marca "Revisão geral" sozinha).
+ */
+function CostDialog({ cost, vehicles, categories, onClose }: { cost: Partial<Cost>; vehicles: Vehicle[]; categories: string[]; onClose: () => void }) {
+  const qc = useQueryClient(); const ref = useRef<HTMLDialogElement>(null);
+  const plan = useQuery({ queryKey: ['plan'], queryFn: () => api<PlanItem[]>('/maintenance/plan') });
+  const [vehicleId, setVehicleId] = useState(cost.vehicleId ?? '');
+  const [category, setCategory] = useState(cost.category ?? 'Manutenção');
+  const [checked, setChecked] = useState<string[]>(cost.maintenance?.planItemIds ?? []);
+  const [touched, setTouched] = useState(!!cost.maintenance);
+  const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
+  useEffect(() => { ref.current?.showModal(); }, []);
+  const items = (plan.data ?? []).filter((p) => p.vehicleId === vehicleId);
+  const showItems = MAINT_CATS.includes(category) && !!vehicleId;
+  const toggle = (id: string) => { setTouched(true); setChecked((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id])); };
+  /** Sugestão: descrição com "revisão" marca o item Revisão geral (só enquanto o usuário não mexeu nos itens). */
+  const suggest = (desc: string) => {
+    if (touched || !/revis/i.test(desc)) return;
+    const rg = items.find((p) => /revis[aã]o geral/i.test(p.item));
+    if (rg) setChecked([rg.id]);
+  };
+  const run = async (fn: () => Promise<unknown>) => {
+    setBusy(true); setErr('');
+    try { await fn(); await qc.invalidateQueries(); onClose(); } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
+  };
+  return (
+    <dialog ref={ref} onClose={onClose} className="wide">
+      <form onSubmit={(e) => {
+        e.preventDefault(); const f = new FormData(e.currentTarget); const g = (k: string) => String(f.get(k) ?? '');
+        const ids = showItems ? checked.filter((id) => items.some((p) => p.id === id)) : [];
+        const body = { date: g('date'), vehicleId: nn(vehicleId), category, description: g('description'), supplier: nn(g('supplier')), amount: num(g('amount')), invoice: nn(g('invoice')), notes: nn(g('notes')),
+          ...(showItems || cost.maintenance ? { maintenance: { km: num(g('km')), planItemIds: ids } } : {}) };
+        run(() => api(cost.id ? `/costs/${cost.id}` : '/costs', { method: cost.id ? 'PATCH' : 'POST', json: body }));
+      }}>
+        <h3>{cost.id ? 'Editar custo' : 'Novo custo'}</h3>
+        <label className="fld"><span>Data</span><input name="date" type="date" required defaultValue={cost.date} /></label>
+        <label className="fld"><span>Veículo</span><select value={vehicleId} onChange={(e) => { setVehicleId(e.target.value); setChecked([]); setTouched(false); }}>
+          <option value="">(sem veículo)</option>{vehicles.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select></label>
+        <label className="fld"><span>Categoria</span><select value={category} onChange={(e) => setCategory(e.target.value)}>{categories.map((c) => <option key={c} value={c}>{c}</option>)}</select></label>
+        <label className="fld"><span>Descrição</span><input name="description" required defaultValue={cost.description} onChange={(e) => suggest(e.target.value)} /></label>
+        <label className="fld"><span>Fornecedor</span><input name="supplier" defaultValue={cost.supplier ?? ''} /></label>
+        <label className="fld"><span>Valor (R$)</span><input name="amount" type="number" step="0.01" defaultValue={cost.amount ?? ''} /></label>
+        <label className="fld"><span>Nota fiscal</span><input name="invoice" defaultValue={cost.invoice ?? ''} /></label>
+        <label className="fld"><span>Observação</span><input name="notes" defaultValue={cost.notes ?? ''} /></label>
+        {showItems && <fieldset className="plan-items">
+          <legend>Itens do plano feitos neste serviço</legend>
+          <p className="note" style={{ marginTop: 0 }}>Os itens marcados recomeçam a contar na tela Manutenção. Deixe tudo desmarcado se o serviço não faz parte do plano (ex.: troca de bateria).</p>
+          <label className="fld"><span>Km do veículo no serviço{checked.length ? ' (obrigatório)' : ''}</span><input name="km" type="number" step="1" required={checked.length > 0} defaultValue={cost.maintenance?.km ?? ''} /></label>
+          {plan.isLoading ? <p className="note">Carregando itens…</p> : items.length === 0 ? <p className="note">Este veículo não tem itens no plano.</p> :
+            <div className="checks">{items.map((p) => <label key={p.id} className="fld chk"><input type="checkbox" checked={checked.includes(p.id)} onChange={() => toggle(p.id)} /> {p.item}</label>)}</div>}
+        </fieldset>}
+        {err && <div className="err">{err}</div>}
+        <div className="act">
+          {cost.id && <button type="button" className="btn" disabled={busy} onClick={() => { if (confirm('Excluir este custo? Os itens do plano ligados a ele saem do histórico.')) run(() => api(`/costs/${cost.id}`, { method: 'DELETE' })); }}>Excluir</button>}
+          <button type="button" className="btn" onClick={onClose}>Cancelar</button>
+          <button type="submit" className="btn pri" disabled={busy}>{busy ? 'Salvando…' : 'Salvar'}</button>
+        </div>
+      </form>
+    </dialog>
   );
 }
 
@@ -81,7 +133,7 @@ export function Importacoes() {
     <>
       <Header title="Importações" sub="Atualize os registros a partir das planilhas. Reimportar a mesma planilha não duplica linhas: viagens encerradas depois são atualizadas." />
       {can(...WRITE) && <div className="two">
-        <div className="panel"><h3 style={{ marginTop: 0 }}>Comando de Bordo</h3><p className="note">Baixe a planilha do Google Drive como .xlsx (abas Registros, Abastecimentos e manutencao_diaria).</p>
+        <div className="panel"><h3 style={{ marginTop: 0 }}>Comando de Bordo</h3><p className="note">Baixe a planilha do Google Drive como .xlsx (abas Registros, Abastecimentos, manutencao_diaria e Manutencao). A aba Manutencao atualiza o plano só quando traz um serviço mais recente.</p>
           <div className="drop"><label className="btn pri" htmlFor="cb">Escolher arquivo</label><input id="cb" type="file" accept=".xlsx" hidden onChange={(e) => send('/imports/comando-bordo', e.target.files?.[0])} /></div></div>
         <div className="panel"><h3 style={{ marginTop: 0 }}>Chronos (rastreador)</h3><p className="note">Exporte o relatório "Períodos de utilização (BDV)" em .xlsx.</p>
           <div className="drop"><label className="btn pri" htmlFor="ch">Escolher arquivo</label><input id="ch" type="file" accept=".xlsx" hidden onChange={(e) => send('/imports/chronos', e.target.files?.[0])} /></div></div>

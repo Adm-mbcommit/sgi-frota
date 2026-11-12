@@ -55,8 +55,24 @@ Para cada item do plano: próxima = último km + intervalo km; vencimento = últ
 | ATENÇÃO | Km restante ≤ `kmAlert`, ou faltam ≤ `dayAlert` dias, ou a previsão pelo ritmo de uso é ≤ `dayAlert` dias |
 | OK | Nenhum dos anteriores |
 
-Registrar um serviço (`POST /maintenance/plan/:id/records`) grava o histórico, atualiza último km/data,
-tira o CONFIRMAR e, se houver valor, lança o custo em Custos.
+### De onde vem o último serviço
+
+O último km/data de cada item avança por três caminhos, todos com a mesma regra
+(`apps/api/src/services/maintenance.ts`): **o plano só avança** — um serviço mais antigo que o último
+registrado é ignorado (compara a data; na mesma data, o km).
+
+| Caminho | Quem | Origem no histórico |
+|---|---|---|
+| Aba **Manutencao** do Comando de Bordo (importação da planilha) | motoristas | Comando de Bordo |
+| **Custos** de Manutenção/Pneus com itens do plano marcados (ex.: revisão → "Revisão geral") | gestor | Custos |
+| Botão **Registrar** na tela Manutenção (serviço sem valor a lançar) | gestor | Registrado no SGI |
+
+- O valor do serviço fica **só em Custos**. O Registrar não lança mais custo, para nada entrar duas vezes.
+- Um custo ligado ao plano exige veículo e km do serviço. Editar o custo substitui os itens ligados;
+  excluir o custo tira os registros do histórico (o prazo do plano não volta sozinho: corrija pelo cadastro do item, se preciso).
+- Na importação, os itens da aba são casados pelo nome sem acento/maiúsculas/espaços
+  ("Pastilhas/ lonas de Freios" = "Pastilhas/lonas de freios"); item que não existe no plano do veículo é criado.
+  Linhas sem km e sem data ("Pendente informação") e placas não cadastradas são ignoradas.
 
 ## Documentos e CNH
 

@@ -224,11 +224,18 @@ export const maintenanceRecords = pgTable('maintenance_records', {
   date: date('date').notNull(),
   supplier: text('supplier'),
   invoice: text('invoice'),
-  costId: uuid('cost_id'),
+  /** Custo que originou o registro (lançado na tela Custos). Excluir o custo exclui o registro. */
+  costId: uuid('cost_id').references(() => costs.id, { onDelete: 'cascade' }),
   notes: text('notes'),
+  /** COMANDO_BORDO = aba "Manutencao" da planilha; SGI = Custos ou botão Registrar. */
+  source: sourceEnum('source').notNull().default('SGI'),
+  externalKey: text('external_key'),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
   createdAt: createdAt(),
-});
+}, (t) => [
+  uniqueIndex('maint_records_org_ext_uq').on(t.organizationId, t.externalKey),
+  index('maint_records_cost_idx').on(t.costId),
+]);
 
 export const vehicleDocuments = pgTable('vehicle_documents', {
   id: id(),

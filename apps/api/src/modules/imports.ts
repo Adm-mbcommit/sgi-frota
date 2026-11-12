@@ -25,7 +25,7 @@ export default async function importRoutes(app: FastifyInstance) {
     const { name, wb } = await upload(req);
     const get = (n: string) => { const r = sheetRows(wb, n); if (!r) throw new HttpError(400, 'sheet_missing', `Aba "${n}" não encontrada na planilha.`); return r.slice(1); };
     const R = await loadResolver(db, req.user.org);
-    const stats = await importComandoBordo(db, req.user.org, R, { trips: get('Registros'), fuel: get('Abastecimentos'), check: sheetRows(wb, 'manutencao_diaria')?.slice(1) ?? [] });
+    const stats = await importComandoBordo(db, req.user.org, R, { trips: get('Registros'), fuel: get('Abastecimentos'), check: sheetRows(wb, 'manutencao_diaria')?.slice(1) ?? [], maint: sheetRows(wb, 'Manutencao')?.slice(1) });
     const [imp] = await db.insert(imports).values({ organizationId: req.user.org, kind: 'COMANDO_BORDO', fileName: name, stats, userId: req.user.sub }).returning();
     await audit(db, req, 'import', 'comando_bordo', imp.id, stats);
     return { id: imp.id, ...stats };
