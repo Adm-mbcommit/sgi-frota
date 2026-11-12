@@ -8,7 +8,7 @@
  */
 import { execSync } from 'node:child_process';
 
-const run = (cmd) => { console.log('> ' + cmd); execSync(cmd, { stdio: 'inherit' }); };
+const run = (cmd, env = {}) => { console.log('> ' + cmd); execSync(cmd, { stdio: 'inherit', env: { ...process.env, ...env } }); };
 
 run('npm run build -w @sgi/core');
 run('npm run build -w @sgi/api');
@@ -18,8 +18,10 @@ const prod = process.env.VERCEL_ENV === 'production' || process.env.MIGRATE_ON_P
 if (!process.env.DATABASE_URL) {
   console.warn('DATABASE_URL não definida: migrações ignoradas. Conecte um banco Postgres ao projeto na Vercel.');
 } else if (prod) {
-  run('node apps/api/dist/db/migrate.js');
-  if (process.env.SEED_ADMIN_EMAIL && process.env.SEED_ADMIN_PASSWORD) run('node apps/api/dist/db/seed.js');
+  // migrações e carga usam a conexão direta (sem pooler) quando o Neon a fornece
+  const direct = { DATABASE_URL: process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL };
+  run('node apps/api/dist/db/migrate.js', direct);
+  if (process.env.SEED_ADMIN_EMAIL && process.env.SEED_ADMIN_PASSWORD) run('node apps/api/dist/db/seed.js', direct);
 } else {
   console.log('Deploy de preview: migrações não aplicadas.');
 }
