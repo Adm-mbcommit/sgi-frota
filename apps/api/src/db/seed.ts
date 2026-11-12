@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import bcrypt from 'bcryptjs';
-import { eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { DEFAULT_CONFIG, LEGACY_DRIVER_ALIASES, LEGACY_VEHICLES, parseDate, parseNum, type LegacySnapshot } from '@sgi/core';
 import { createDb } from './client.js';
 import * as s from './schema.js';
@@ -20,11 +20,32 @@ if (!url) throw new Error('DATABASE_URL não definida');
 const { db, pool } = createDb(url);
 const snap = JSON.parse(readFileSync(fileURLToPath(new URL('../../../../legacy/snapshot.json', import.meta.url)), 'utf8')) as LegacySnapshot;
 
+/**
+ * Cria ou atualiza o administrador a partir de SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD.
+ * Roda em todo deploy: serve também para recuperar o acesso trocando essas variáveis.
+ */
+async function ensureAdmin(orgId: string) {
+  const email = process.env.SEED_ADMIN_EMAIL?.trim(), pass = process.env.SEED_ADMIN_PASSWORD;
+  if (!email || !pass) { console.log('SEED_ADMIN_EMAIL/SEED_ADMIN_PASSWORD não definidos: administrador não alterado.'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { console.error(`SEED_ADMIN_EMAIL inválido ("${email}"): informe um e-mail real.`); process.exitCode = 1; return; }
+  if (pass.length < 10) { console.error('SEED_ADMIN_PASSWORD precisa de ao menos 10 caracteres.'); process.exitCode = 1; return; }
+  const passwordHash = await bcrypt.hash(pass, 12);
+  const [found] = await db.select({ id: s.users.id }).from(s.users).where(sql`lower(${s.users.email}) = lower(${email})`);
+  if (found) await db.update(s.users).set({ passwordHash, role: 'ADMIN', active: true, organizationId: orgId }).where(eq(s.users.id, found.id));
+  else await db.insert(s.users).values({ organizationId: orgId, email, name: 'Administrador', role: 'ADMIN', passwordHash });
+  // desativa administradores criados com e-mail inválido (ex.: texto de exemplo colado por engano)
+  const bad = await db.update(s.users).set({ active: false })
+    .where(and(eq(s.users.organizationId, orgId), sql`${s.users.email} !~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'`)).returning({ email: s.users.email });
+  if (bad.length) console.log(`Desativados ${bad.length} usuário(s) com e-mail inválido.`);
+  console.log(`Administrador pronto: ${email}`);
+}
+
 const [existing] = await db.select().from(s.organizations).where(eq(s.organizations.name, ORG_NAME));
 if (existing && !process.argv.includes('--reset')) {
-  console.log('Empresa já existe; nada a fazer. Use --reset para recriar.');
+  console.log('Empresa já existe; dados mantidos.');
+  await ensureAdmin(existing.id);
   await pool.end();
-  process.exit(0);
+  process.exit();
 }
 if (existing) await db.delete(s.organizations).where(eq(s.organizations.id, existing.id));
 
@@ -55,11 +76,7 @@ await db.insert(s.costs).values(snap.costs.map((c) => ({
 const tStatus = (x: unknown) => (x === 'Resolvido' ? 'RESOLVIDO' : x === 'Sugestão' ? 'SUGESTAO' : 'ABERTO') as 'ABERTO';
 await db.insert(s.tasks).values(snap.todo.map((t) => ({ organizationId: orgId, title: String(t[0]), status: tStatus(t[1]), description: (t[2] as string) ?? null })));
 
-const email = process.env.SEED_ADMIN_EMAIL, pass = process.env.SEED_ADMIN_PASSWORD;
-if (email && pass) {
-  await db.insert(s.users).values({ organizationId: orgId, email, name: 'Administrador', role: 'ADMIN', passwordHash: await bcrypt.hash(pass, 12) });
-  console.log(`Administrador criado: ${email}`);
-} else console.log('SEED_ADMIN_EMAIL/SEED_ADMIN_PASSWORD não definidos: crie o primeiro usuário com npm run user:create.');
+await ensureAdmin(orgId);
 
 await db.insert(s.imports).values({ organizationId: orgId, kind: 'LEGADO', fileName: 'legacy/snapshot.json', stats: { ...cb, speed: ch } });
 console.log('Seed concluído:', { veiculos: vs.length, motoristas: snap.drivers.length, ...cb, chronos: ch.inserted, plano: snap.plan.length, custos: snap.costs.length, pendencias: snap.todo.length });
