@@ -14,6 +14,7 @@ export function MinhaConta() {
   const [busy, setBusy] = useState(false);
   const submit = async (e: FormEvent) => {
     e.preventDefault(); setMsg(null);
+    if (!f.current || !f.next || !f.again) return setMsg({ ok: false, text: 'Preencha os três campos: senha atual, nova senha e a repetição da nova senha.' });
     if (f.next.length < 10) return setMsg({ ok: false, text: 'A nova senha precisa ter pelo menos 10 caracteres.' });
     if (f.next !== f.again) return setMsg({ ok: false, text: 'A confirmação não é igual à nova senha.' });
     setBusy(true);
@@ -28,11 +29,11 @@ export function MinhaConta() {
     <>
       <Header title="Minha conta" sub={`${me?.user.name} · ${me?.user.email} · ${ROLE[me?.user.role ?? ''] ?? ''}`} />
       <div className="two">
-        <form className="panel" onSubmit={submit} style={{ maxWidth: 460 }}>
+        <form className="panel" onSubmit={submit} noValidate style={{ maxWidth: 460 }}>
           <h3 style={{ marginTop: 0 }}>Trocar senha</h3>
-          <label className="fld"><span>Senha atual</span><input type="password" autoComplete="current-password" required value={f.current} onChange={set('current')} /></label>
-          <label className="fld"><span>Nova senha (mínimo 10 caracteres)</span><input type="password" autoComplete="new-password" required minLength={10} value={f.next} onChange={set('next')} /></label>
-          <label className="fld"><span>Repita a nova senha</span><input type="password" autoComplete="new-password" required value={f.again} onChange={set('again')} /></label>
+          <label className="fld"><span>Senha atual</span><input type="password" autoComplete="current-password" value={f.current} onChange={set('current')} /></label>
+          <label className="fld"><span>Nova senha (mínimo 10 caracteres)</span><input type="password" autoComplete="new-password" value={f.next} onChange={set('next')} /></label>
+          <label className="fld"><span>Repita a nova senha</span><input type="password" autoComplete="new-password" value={f.again} onChange={set('again')} /></label>
           {msg && <div className={msg.ok ? 'banner' : 'err'} style={{ marginBottom: 12 }}>{msg.text}</div>}
           <button type="submit" className="btn pri" disabled={busy}>{busy ? 'Salvando…' : 'Trocar senha'}</button>
           <p className="note">Dica: uma frase curta fácil de lembrar (ex.: "caminhonete azul na obra") é mais segura que uma senha curta com símbolos.</p>
@@ -96,7 +97,7 @@ export function Parametros() {
     <>
       <Header title="Parâmetros" sub={admin ? 'Limites usados nos alertas e nas verificações dos registros. Alterações ficam registradas na auditoria.' : 'Limites usados nos alertas e nas verificações dos registros. Só o administrador altera.'} />
       <Loading q={q} />
-      {q.data && <form onSubmit={save}>
+      {q.data && <form onSubmit={save} noValidate>
         <div className="two">
           {GROUPS.map((g) => <div className="panel" key={g.title}>
             <h3 style={{ marginTop: 0 }}>{g.title}</h3>

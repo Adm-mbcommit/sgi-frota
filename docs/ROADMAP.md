@@ -19,12 +19,11 @@
 - [ ] Importação do Chronos pela API do rastreador, se disponível
 - [ ] Reprocessar registros quando um apelido de placa/motorista for cadastrado
 
-## Fase 4 — App do motorista (substituir o formulário do Comando de Bordo)
-- [ ] PWA no celular: iniciar/encerrar viagem com km pré-preenchido, GPS e QR Code do veículo
-- [ ] Abastecimento com foto do cupom, valor bruto/desconto/pago separados, listas fechadas de posto
-- [ ] Checklist diário com fotos
+## Fora dos planos
+- App do motorista no celular: **não será feito** (decisão do usuário). Os motoristas continuam usando o
+  formulário do Comando de Bordo, que chega ao SGI pela sincronização automática.
 
-## Fase 5 — Gestão
+## Fase 4 — Gestão
 - [ ] Alertas por e-mail/WhatsApp (manutenção, documentos, CNH, excesso de velocidade)
 - [ ] Anexos (NF, CRLV, apólice) em armazenamento de objetos
 - [ ] Relatórios em PDF/Excel por período, veículo e motorista
