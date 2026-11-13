@@ -15,7 +15,7 @@
 
 ## Fase 3 — Automação dos dados
 - [x] Sincronização automática com a planilha do Google Drive: um Apps Script na planilha envia o .xlsx ao SGI
-      a cada formulário respondido e a cada 30 min (Importações → Sincronização automática). Ver ARQUITETURA.md.
+      a cada 10 min (Importações → Sincronização automática). Ver ARQUITETURA.md.
 - [ ] Importação do Chronos pela API do rastreador, se disponível
 - [ ] Reprocessar registros quando um apelido de placa/motorista for cadastrado
 
