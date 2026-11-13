@@ -17,7 +17,7 @@ export default function Layout() {
   const { qs } = usePeriod();
   const dash = useQuery({ queryKey: ['dashboard', qs], queryFn: () => api<Dashboard>('/dashboard?' + qs) });
   const badge: Record<string, number> = { alerts: dash.data?.kpis.maintenanceAlerts ?? 0, tasks: dash.data?.openTasks.length ?? 0 };
-  const items = can('ADMIN') ? [...NAV, ['/usuarios', 'Usuários'] as [string, string]] : NAV;
+  const items = [...NAV, ...(can('MOTORISTA') ? [] : [['/parametros', 'Parâmetros'] as [string, string]]), ...(can('ADMIN') ? [['/usuarios', 'Usuários'] as [string, string]] : [])];
   return (
     <div className="app">
       <nav className="side" aria-label="Módulos">
@@ -25,7 +25,7 @@ export default function Layout() {
         {items.map((it) => typeof it === 'string'
           ? <div className="grp" key={it}>{it}</div>
           : <NavLink key={it[0]} to={it[0]} end={it[0] === '/'} className={({ isActive }) => (isActive ? 'act' : '')}>{it[1]}{it[2] && badge[it[2]] ? <i>{badge[it[2]]}</i> : null}</NavLink>)}
-        <div className="user"><b>{me?.user.name}</b><span>{ROLE[me?.user.role ?? ''] ?? ''} · {me?.organization.name}</span><button onClick={logout}>Sair</button></div>
+        <div className="user"><b>{me?.user.name}</b><span>{ROLE[me?.user.role ?? ''] ?? ''} · {me?.organization.name}</span><NavLink to="/conta">Minha conta</NavLink><button onClick={logout}>Sair</button></div>
       </nav>
       <main className="main"><Outlet /></main>
     </div>

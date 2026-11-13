@@ -7,7 +7,7 @@ Datas de calendário em `AAAA-MM-DD`; instantes em ISO 8601. Listas aceitam `?fr
 |---|---|---|---|
 | POST | /auth/login | — | `{email, password}` → `{token, user}` |
 | GET | /auth/me | todos | Usuário e empresa |
-| POST | /auth/change-password | todos | `{current, next}` |
+| POST | /auth/change-password | todos | `{current, next}` (mín. 10 caracteres, diferente da atual; auditado) |
 | GET | /dashboard | todos | KPIs, veículos, alertas, gráficos |
 | GET | /trips | todos | Viagens analisadas (`plate`, `problems=1`) |
 | POST | /trips | ADMIN, GESTOR, MOTORISTA | Iniciar viagem |
@@ -18,7 +18,7 @@ Datas de calendário em `AAAA-MM-DD`; instantes em ISO 8601. Listas aceitam `?fr
 | GET | /drivers/summary | todos | Atividade por motorista |
 | GET | /quality | todos | Verificação dos dados |
 | GET / POST / PATCH | /vehicles, /drivers, /stations | todos / ADMIN, GESTOR | Cadastros |
-| GET / PUT | /settings | todos / ADMIN | Parâmetros das regras |
+| GET / PUT | /settings | todos / ADMIN | Parâmetros das regras (PUT parcial; recusa `pMin ≥ pMax` e `kmlMin ≥ kmlMax`) |
 | GET / POST / PATCH | /maintenance/plan | todos / ADMIN, GESTOR | Plano de manutenção |
 | POST | /maintenance/plan/:id/records | ADMIN, GESTOR | Registrar serviço |
 | GET | /maintenance/records | todos | Histórico de serviços |

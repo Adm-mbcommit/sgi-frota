@@ -11,7 +11,7 @@
 - [ ] Criar o projeto na Vercel, conectar o Neon e publicar (docs/DEPLOY.md)
 - [ ] Criar usuários dos gestores; trocar a senha do admin
 - [ ] Resolver as pendências herdadas (datas reais dos documentos, CNH, revisão da Saveiro 55…)
-- [ ] Tela de parâmetros (hoje só via API) e de troca de senha
+- [x] Tela de parâmetros (Gestão → Parâmetros; só o ADMIN altera) e de troca de senha (Minha conta)
 
 ## Fase 3 — Automação dos dados
 - [x] Sincronização automática com a planilha do Google Drive: um Apps Script na planilha envia o .xlsx ao SGI
