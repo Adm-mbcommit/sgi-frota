@@ -71,7 +71,7 @@ export function Pendencias() {
 
 export function Importacoes() {
   const { can } = useAuth(); const qc = useQueryClient();
-  const q = useQuery({ queryKey: ['imports'], queryFn: () => api<{ id: string; kind: string; fileName: string; stats: Record<string, unknown>; at: string }[]>('/imports') });
+  const q = useQuery({ queryKey: ['imports'], queryFn: () => api<{ id: string; kind: string; fileName: string; stats: Record<string, unknown>; at: string }[]>('/imports'), refetchInterval: 60_000 });
   const [msg, setMsg] = useState('');
   const send = async (path: string, f?: File) => {
     if (!f) return; setMsg('Importando ' + f.name + '…');
@@ -102,7 +102,7 @@ export function Importacoes() {
 /** Sincronização automática com a planilha do Google (Apps Script + chave). */
 function SyncPanel() {
   const qc = useQueryClient();
-  const q = useQuery({ queryKey: ['sync'], queryFn: () => api<{ configured: boolean; createdAt: string | null; lastCheckAt: string | null; lastImportAt: string | null }>('/imports/sync') });
+  const q = useQuery({ queryKey: ['sync'], queryFn: () => api<{ configured: boolean; createdAt: string | null; lastCheckAt: string | null; lastImportAt: string | null }>('/imports/sync'), refetchInterval: 60_000 });
   const [script, setScript] = useState('');
   const [copied, setCopied] = useState(false);
   const [sheet, setSheet] = useState('');
@@ -125,7 +125,8 @@ function SyncPanel() {
       <h3 style={{ marginTop: 0 }}>Sincronização automática (Comando de Bordo)</h3>
       <p className="note" style={{ marginTop: 0 }}>A planilha do Google envia os dados ao SGI sozinha: a cada 10 minutos. Envios sem novidade são ignorados. O script fica num projeto separado e não mexe no sistema do QR Code dos veículos.</p>
       {d && <p>{d.configured
-        ? <><span className="chip ok">Ligada</span> Última verificação: {d.lastCheckAt ? fdt(d.lastCheckAt) : 'ainda nenhuma'} · Última importação com novidades: {d.lastImportAt ? fdt(d.lastImportAt) : 'ainda nenhuma'}</>
+        ? <><span className="chip ok">Ligada</span> Último envio recebido da planilha: <b>{d.lastCheckAt ? fdt(d.lastCheckAt) : 'ainda nenhum'}</b> · Último envio com dados novos: {d.lastImportAt ? fdt(d.lastImportAt) : 'ainda nenhum'}
+          <br /><span className="note">Esta informação se atualiza sozinha a cada minuto. O "último envio recebido" deve mudar a cada 10 minutos; o histórico abaixo só ganha uma linha quando alguém preencheu algo novo no formulário.</span></>
         : <><span className="chip">Desligada</span> Gere a chave abaixo e siga os passos.</>}</p>}
       <label style={{ display: 'block', margin: '10px 0' }}>Endereço da planilha do Comando de Bordo (copie da barra do navegador, com a planilha aberta)
         <input value={sheet} onChange={(e) => setSheet(e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/…/edit" style={{ display: 'block', width: '100%', marginTop: 4 }} />
