@@ -60,7 +60,8 @@ e `can(...)` no front.
 
 ## Próximos passos (docs/ROADMAP.md)
 
-1. Telas de troca de senha (própria) e de parâmetros (`PUT /settings` já existe).
+Não proponha app do motorista: o usuário decidiu manter o formulário do Comando de Bordo.
+
+1. ~~Telas de troca de senha (própria) e de parâmetros~~ (feito: Minha conta e Gestão → Parâmetros).
 2. ~~Sincronização automática com a planilha do Google Drive~~ (feito: Importações → Sincronização automática).
-3. App do motorista (PWA) para substituir o formulário do Comando de Bordo.
-4. Alertas por e-mail/WhatsApp; anexos (NF, CRLV); relatórios PDF/Excel.
+3. Alertas por e-mail/WhatsApp; anexos (NF, CRLV); relatórios PDF/Excel.

@@ -1,10 +1,10 @@
 /** Cadastros: veículos, motoristas, postos e parâmetros. */
 import type { FastifyInstance } from 'fastify';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { DEFAULT_CONFIG } from '@sgi/core';
 import { drivers, organizations, stations, vehicles } from '../db/schema.js';
-import { isoDate, notFound, parse, uuid } from '../plugins/http.js';
+import { HttpError, isoDate, notFound, parse, uuid } from '../plugins/http.js';
 import { WRITE_ROLES } from '../plugins/auth.js';
 import { audit } from '../services/audit.js';
 import { loadConfig } from '../services/fleet.js';
@@ -66,8 +66,11 @@ export default async function registryRoutes(app: FastifyInstance) {
   app.put('/settings', { onRequest: [app.authenticate, app.requireRole('ADMIN')] }, async (req) => {
     const num = z.number().nonnegative();
     const b = parse(z.object(Object.fromEntries(Object.keys(DEFAULT_CONFIG).filter((k) => k !== 'empresa' && k !== 'postos').map((k) => [k, num])) as Record<string, typeof num>).partial().strict(), req.body);
-    const [o] = await db.select().from(organizations).where(eq(organizations.id, req.user.org));
-    await db.update(organizations).set({ settings: { ...(o.settings ?? {}), ...b } }).where(eq(organizations.id, req.user.org));
+    const cur = { ...(await loadConfig(db, req.user.org)), ...b };
+    if (cur.pMin >= cur.pMax) throw new HttpError(400, 'invalid_range', 'O preço mínimo por litro precisa ser menor que o máximo.');
+    if (cur.kmlMin >= cur.kmlMax) throw new HttpError(400, 'invalid_range', 'O consumo mínimo (km/L) precisa ser menor que o máximo.');
+    // merge no próprio banco, para não apagar campos gravados ao mesmo tempo (ex.: sincronização)
+    await db.update(organizations).set({ settings: sql`${organizations.settings} || ${JSON.stringify(b)}::jsonb` }).where(eq(organizations.id, req.user.org));
     await audit(db, req, 'update', 'settings', req.user.org, b);
     return loadConfig(db, req.user.org);
   });

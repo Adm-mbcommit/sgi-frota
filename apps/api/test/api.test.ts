@@ -144,4 +144,25 @@ d('API', () => {
     const audit = (await call('GET', '/audit', admin)).json();
     expect(audit.some((a: { entity: string }) => a.entity === 'maintenance')).toBe(true);
   });
+  it('altera parâmetros (só admin) sem apagar os dados da sincronização', async () => {
+    expect((await call('PUT', '/settings', reader, { speed: 90 })).statusCode).toBe(403);
+    expect((await call('PUT', '/settings', admin, { pMin: 12 })).statusCode).toBe(400); // mínimo > máximo
+    expect((await call('PUT', '/settings', admin, { inexistente: 1 })).statusCode).toBe(400);
+    await call('POST', '/imports/sync/token', admin);
+    const r = await call('PUT', '/settings', admin, { speed: 90, kmAlert: 2000 });
+    expect(r.statusCode).toBe(200);
+    expect(r.json()).toMatchObject({ speed: 90, kmAlert: 2000, dayAlert: 30 });
+    expect((await call('GET', '/imports/sync', admin)).json()).toMatchObject({ configured: true });
+  });
+
+  it('troca a própria senha conferindo a atual', async () => {
+    expect((await call('POST', '/auth/change-password', reader, { current: 'errada', next: 'outra-senha-forte' })).statusCode).toBe(400);
+    expect((await call('POST', '/auth/change-password', reader, { current: 'senha-forte-123', next: 'curta' })).statusCode).toBe(400);
+    expect((await call('POST', '/auth/change-password', reader, { current: 'senha-forte-123', next: 'senha-forte-123' })).statusCode).toBe(400);
+    expect((await call('POST', '/auth/change-password', reader, { current: 'senha-forte-123', next: 'outra-senha-forte' })).statusCode).toBe(204);
+    expect((await call('POST', '/auth/login', undefined, { email: 'leitor@teste.com', password: 'senha-forte-123' })).statusCode).toBe(401);
+    expect((await call('POST', '/auth/login', undefined, { email: 'leitor@teste.com', password: 'outra-senha-forte' })).statusCode).toBe(200);
+    const [a] = await db.select().from(s.auditLog).where(sql`${s.auditLog.action} = 'change_password'`);
+    expect(JSON.stringify(a)).not.toContain('outra-senha-forte');
+  });
 });

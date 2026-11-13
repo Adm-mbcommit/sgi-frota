@@ -108,6 +108,7 @@ dialog .act{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
 /* ---------- adições do app ---------- */
 .side .user{margin-top:auto;font-size:12px;padding:10px;border-top:1px solid rgba(255,255,255,.1);margin-top:8px;display:flex;flex-direction:column;gap:6px}
 .side .user b{color:#fff;font-weight:500}
+.side .user a{display:inline;color:var(--side-fg);text-decoration:underline;font-size:12px;font-weight:400;padding:0;background:none}
 .side .user button{all:unset;cursor:pointer;color:var(--side-fg);text-decoration:underline;font-size:12px}
 .login{min-height:100vh;display:grid;place-items:center;padding:16px}
 .login form{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:28px;width:min(380px,100%)}

@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { users, organizations } from '../db/schema.js';
 import { HttpError, parse } from '../plugins/http.js';
 import type { Role } from '../plugins/auth.js';
+import { audit } from '../services/audit.js';
 
 export default async function authRoutes(app: FastifyInstance) {
   const { db } = app;
@@ -26,11 +27,14 @@ export default async function authRoutes(app: FastifyInstance) {
     return { user: u, organization: o };
   });
 
-  app.post('/auth/change-password', { onRequest: [app.authenticate] }, async (req, reply) => {
-    const b = parse(z.object({ current: z.string(), next: z.string().min(10, 'Mínimo de 10 caracteres') }), req.body);
+  app.post('/auth/change-password', { onRequest: [app.authenticate], config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req, reply) => {
+    const b = parse(z.object({ current: z.string(), next: z.string().min(10, 'A nova senha precisa ter pelo menos 10 caracteres.').max(200) }), req.body);
     const [u] = await db.select().from(users).where(eq(users.id, req.user.sub));
+    // 400 (e não 401) para a tela não interpretar como sessão expirada
     if (!u || !(await bcrypt.compare(b.current, u.passwordHash))) throw new HttpError(400, 'invalid_password', 'Senha atual incorreta.');
+    if (b.next === b.current) throw new HttpError(400, 'same_password', 'A nova senha precisa ser diferente da atual.');
     await db.update(users).set({ passwordHash: await bcrypt.hash(b.next, 12) }).where(eq(users.id, u.id));
+    await audit(db, req, 'change_password', 'user', u.id); // sem a senha
     return reply.code(204).send();
   });
 }

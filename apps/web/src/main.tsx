@@ -12,6 +12,7 @@ import Manutencao from './pages/Manutencao';
 import { Documentos, Motoristas, Veiculos } from './pages/Cadastros';
 import { Abastecimentos, Velocidade, Viagens } from './pages/Registros';
 import { Custos, Importacoes, Pendencias, Usuarios } from './pages/Gestao';
+import { MinhaConta, Parametros } from './pages/Conta';
 
 const qc = new QueryClient({ defaultOptions: { queries: { staleTime: 60_000, refetchOnWindowFocus: true, retry: 1 } } });
 
@@ -33,6 +34,8 @@ function Root() {
         <Route path="custos" element={<Custos />} />
         <Route path="pendencias" element={<Pendencias />} />
         <Route path="importacoes" element={<Importacoes />} />
+        <Route path="conta" element={<MinhaConta />} />
+        {!can('MOTORISTA') && <Route path="parametros" element={<Parametros />} />}
         {can('ADMIN') && <Route path="usuarios" element={<Usuarios />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

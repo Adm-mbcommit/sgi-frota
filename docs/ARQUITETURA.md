@@ -19,7 +19,7 @@ Em servidor próprio (alternativa): Caddy (HTTPS) → nginx (web) → API Fastif
 | API | Fastify 5 | Rápido, com plugins maduros (JWT, CORS, rate limit, multipart, helmet) |
 | Banco | PostgreSQL 16 + Drizzle ORM | Relacional, transações, migrações SQL versionadas, sem binários externos |
 | Front | React + Vite + TanStack Query | Cache e revalidação automática; build estático servido por nginx |
-| Autenticação | JWT (Bearer), senha com bcrypt (custo 12) | Simples para web e para um futuro app do motorista |
+| Autenticação | JWT (Bearer), senha com bcrypt (custo 12) | Simples e suficiente para o sistema web |
 | Implantação | Vercel + Neon (Postgres) | Sem servidor para manter; HTTPS, domínio e deploy a cada push. Docker + Caddy como alternativa |
 
 ## Multiempresa
