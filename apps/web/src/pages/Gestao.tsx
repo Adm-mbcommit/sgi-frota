@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, apiUrl, upload } from '../lib/api';
-import { syncScript } from '../lib/sync-script';
+import { sheetIdFromUrl, syncScript } from '../lib/sync-script';
 import { fd, fdt, nf, rs, todayIso } from '../lib/format';
 import { useAuth, WRITE } from '../lib/auth';
 import type { Cost, Task, User, Vehicle } from '../lib/types';
@@ -105,10 +105,13 @@ function SyncPanel() {
   const q = useQuery({ queryKey: ['sync'], queryFn: () => api<{ configured: boolean; createdAt: string | null; lastCheckAt: string | null; lastImportAt: string | null }>('/imports/sync') });
   const [script, setScript] = useState('');
   const [copied, setCopied] = useState(false);
+  const [sheet, setSheet] = useState('');
+  const sheetId = sheetIdFromUrl(sheet);
   const generate = async () => {
+    if (!sheetId) return;
     if (q.data?.configured && !confirm('Gerar uma nova chave desliga o script que já está na planilha até você colar o novo. Continuar?')) return;
     const { token } = await api<{ token: string }>('/imports/sync/token', { method: 'POST' });
-    setScript(syncScript(apiUrl('/imports/comando-bordo/sync'), token)); setCopied(false);
+    setScript(syncScript(apiUrl('/imports/comando-bordo/sync'), token, sheetId)); setCopied(false);
     await qc.invalidateQueries({ queryKey: ['sync'] });
   };
   const disable = async () => {
@@ -120,21 +123,26 @@ function SyncPanel() {
   return (
     <div className="panel" style={{ marginTop: 14 }}>
       <h3 style={{ marginTop: 0 }}>Sincronização automática (Comando de Bordo)</h3>
-      <p className="note" style={{ marginTop: 0 }}>A planilha do Google envia os dados ao SGI sozinha: a cada formulário respondido e a cada 30 minutos. Envios sem novidade são ignorados.</p>
+      <p className="note" style={{ marginTop: 0 }}>A planilha do Google envia os dados ao SGI sozinha: a cada 10 minutos. Envios sem novidade são ignorados. O script fica num projeto separado e não mexe no sistema do QR Code dos veículos.</p>
       {d && <p>{d.configured
         ? <><span className="chip ok">Ligada</span> Última verificação: {d.lastCheckAt ? fdt(d.lastCheckAt) : 'ainda nenhuma'} · Última importação com novidades: {d.lastImportAt ? fdt(d.lastImportAt) : 'ainda nenhuma'}</>
         : <><span className="chip">Desligada</span> Gere a chave abaixo e siga os passos.</>}</p>}
+      <label style={{ display: 'block', margin: '10px 0' }}>Endereço da planilha do Comando de Bordo (copie da barra do navegador, com a planilha aberta)
+        <input value={sheet} onChange={(e) => setSheet(e.target.value)} placeholder="https://docs.google.com/spreadsheets/d/…/edit" style={{ display: 'block', width: '100%', marginTop: 4 }} />
+        {sheet && !sheetId && <span className="note" style={{ color: 'var(--bad, #c00)' }}>Esse endereço não parece ser de uma planilha do Google.</span>}
+      </label>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button className="btn pri" onClick={generate}>{d?.configured ? 'Gerar nova chave e script' : 'Ligar: gerar chave e script'}</button>
+        <button className="btn pri" disabled={!sheetId} onClick={generate}>{d?.configured ? 'Gerar nova chave e script' : 'Ligar: gerar chave e script'}</button>
         {d?.configured && <button className="btn" onClick={disable}>Desligar</button>}
       </div>
       {script && <>
         <ol className="note" style={{ fontSize: 13, lineHeight: 1.6 }}>
           <li>Clique em <b>Copiar script</b> (abaixo).</li>
-          <li>Abra a planilha <b>Comando de Bordo - Veículos</b> no Google Drive.</li>
-          <li>No menu, clique em <b>Extensões → Apps Script</b>.</li>
-          <li>Apague o que estiver no editor, cole o script e clique no ícone de <b>Salvar</b> (disquete).</li>
-          <li>Na barra de cima, escolha a função <b>instalar</b> e clique em <b>Executar</b>.</li>
+          <li>Abra <b>script.google.com</b> com a conta dona da planilha (se o navegador tiver várias contas Google, use uma janela privada só com ela).</li>
+          <li>Clique em <b>Novo projeto</b>. <b>Não</b> use o projeto que já existe na planilha (é o do QR Code dos veículos).</li>
+          <li>Dê o nome <b>SGI Frota - envio</b> (clique em "Projeto sem título" no alto).</li>
+          <li>Apague o texto de exemplo deste projeto novo, cole o script e clique no ícone de <b>Salvar</b> (disquete).</li>
+          <li>Na barra de cima, escolha a função <b>instalarSGI</b> e clique em <b>Executar</b>.</li>
           <li>O Google vai pedir permissão: escolha sua conta → <b>Avançado</b> → <b>Acessar (não seguro)</b> → <b>Permitir</b>. (O aviso aparece porque o script é seu, não publicado.)</li>
           <li>Pronto. Volte aqui e recarregue a página: a "Última verificação" deve mostrar o horário de agora.</li>
         </ol>

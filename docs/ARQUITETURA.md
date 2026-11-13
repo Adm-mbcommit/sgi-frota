@@ -64,13 +64,19 @@ usam o calendário de São Paulo.
 
 ## Sincronização automática com a planilha do Google
 
-Em vez de uma conta de serviço do Google, a própria planilha **Comando de Bordo - Veículos** empurra os dados:
+Em vez de uma conta de serviço do Google, um Apps Script do próprio dono da planilha
+**Comando de Bordo - Veículos** empurra os dados.
+
+> **Atenção:** o projeto Apps Script *da planilha* (Extensões → Apps Script) é o sistema do QR Code dos
+> veículos e do ponto (`doGet`, `index.html`, gatilhos próprios). Não mexa nele. O script do SGI fica num
+> **projeto separado** (script.google.com → Novo projeto) e lê a planilha pelo ID.
 
 1. O ADMIN clica em *Importações → Sincronização automática → Ligar*. A API gera uma chave aleatória
    (`POST /imports/sync/token`) e guarda só o hash sha256 em `organizations.settings.syncTokenHash`.
    A tela monta o script (`apps/web/src/lib/sync-script.ts`) com o endereço da API e a chave.
-2. O script é colado em *Extensões → Apps Script* da planilha e a função `instalar` cria dois gatilhos:
-   ao enviar formulário e a cada 30 minutos. Há também o menu *SGI Frota → Enviar ao SGI agora*.
+2. O script é colado num projeto novo e a função `instalarSGI` cria um gatilho a cada 10 minutos
+   (só remove gatilhos da própria função `enviarParaSGI`). Os registros chegam pelo app do QR Code, que grava
+   por script e não dispara onEdit/onChange; por isso o envio é por tempo.
 3. A cada gatilho o script exporta a planilha como .xlsx e envia para `POST /imports/comando-bordo/sync`
    com o cabeçalho `X-Sync-Token`. A API usa o mesmo importador do upload manual (idempotente por `external_key`).
 4. Se o conteúdo das abas for igual ao último envio (hash em `settings.syncLastHash`), nada é gravado;
