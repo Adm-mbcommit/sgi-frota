@@ -36,7 +36,7 @@ export default function Painel() {
   return (
     <>
       <Header title="Painel de gestão da frota" sub="Somente registros da empresa. Escolha o período dos indicadores:"
-        actions={d && <div className="asof">Comando de Bordo: {fdt(d.lastTripAt)}<br />Chronos até: {fdt(d.lastSpeedAt)}</div>} />
+        actions={d && <div className="asof" title="Data do registro mais recente de cada fonte (não é o horário da sincronização).">Último registro do Comando de Bordo: {fdt(d.lastTripAt)}<br />Último dado do Chronos (importação manual): {fdt(d.lastSpeedAt)}</div>} />
       <PeriodPicker />
       <Loading q={q} />
       {d && <>
