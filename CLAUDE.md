@@ -1,6 +1,8 @@
-# SGI Frota — guia para o Claude
+# SGI Matias Brasil — guia para o Claude
 
-Sistema de gestão da frota da Matias Brasil Engenharia (4 veículos, ~8 motoristas).
+Sistema de Gestão Interno da Matias Brasil Engenharia, organizado em **módulos por setor**.
+Hoje existe o módulo **Frota** (4 veículos, ~8 motoristas); virão Administrativo, RH e outros.
+O repositório e o projeto Vercel ainda se chamam `sgi-frota` (nome antigo).
 Nasceu do artefato "SGI Frota Matias" (página única no Claude); `legacy/` guarda o original e o snapshot de dados.
 Produção: https://sgi-frota.vercel.app (projeto Vercel `sgi-frota`, conta `adm-mbcommit`).
 
@@ -14,6 +16,8 @@ Interface, mensagens, documentação e commits em **português**; identificadore
 - `apps/api` — Fastify 5 + PostgreSQL (Drizzle ORM), JWT, rotas em `src/modules/`, importadores em `src/importers/`.
   `src/vercel.ts` adapta a API para Função Serverless; `api/index.mjs` (raiz) aponta para o build.
 - `apps/web` — React 18 + Vite + TanStack Query. Telas em `src/pages/`, componentes em `src/components/ui.tsx`.
+  Módulos (setores) e seus menus em `src/modules.ts`; rotas de cada módulo em `/<módulo>/...` (`main.tsx`).
+  Usuários e Minha conta são do sistema (fora dos módulos).
   O visual (tokens CSS, tema claro/escuro) veio do artefato: `src/styles.css`.
 - `docs/` — ARQUITETURA, REGRAS-DE-NEGOCIO (parâmetros e paridade), DEPLOY, API, ROADMAP. Atualize junto com o código.
 - `infra/` — alternativa Docker + Caddy (não usada em produção).

@@ -1,5 +1,7 @@
 # Roadmap
 
+O sistema passou a se chamar **SGI Matias Brasil**, com um módulo por setor. Frota é o primeiro.
+
 ## Fase 1 — Base (esta entrega)
 - [x] Regras do artefato portadas para `@sgi/core`, com teste de paridade
 - [x] Banco PostgreSQL com histórico, auditoria e multiempresa
@@ -28,3 +30,10 @@
 - [ ] Anexos (NF, CRLV, apólice) em armazenamento de objetos
 - [ ] Relatórios em PDF/Excel por período, veículo e motorista
 - [ ] Recuperação de senha por e-mail; autenticação em dois fatores para administradores
+
+## Outros setores (módulos do SGI Matias Brasil)
+- [x] Nome SGI Matias Brasil, tela de Início com os setores e Frota como setor (telas em `/frota/...`)
+- [x] Administrativo e RH aparecem como "em breve"
+- [ ] Administrativo: levantar com o usuário o que o setor precisa
+- [ ] RH: levantar com o usuário o que o setor precisa
+- [ ] Permissões por módulo (quem vê cada setor)
