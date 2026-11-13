@@ -87,6 +87,42 @@ d('API', () => {
     expect(closed.startedAt).toBe('2026-10-01T11:00:00.000Z'); // 08:00 em São Paulo
   });
 
+  it('sincroniza a planilha com a chave gerada pelo admin, sem reimportar o que não mudou', async () => {
+    const wb = new ExcelJS.Workbook();
+    wb.addWorksheet('Registros').addRow(['Saída']);
+    wb.getWorksheet('Registros')!.addRow([new Date(Date.UTC(2026, 8, 3, 8, 0)), 'Matias Brasil', 'Saveiro', 'TPR - 0F55', 'Alvino', null, 44000, null, null, null, null, 'Em uso']);
+    wb.addWorksheet('Abastecimentos').addRow(['Data']);
+    const boundary = '----sync';
+    const payload = Buffer.concat([
+      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="comando-bordo.xlsx"\r\nContent-Type: application/octet-stream\r\n\r\n`),
+      Buffer.from(await wb.xlsx.writeBuffer()), Buffer.from(`\r\n--${boundary}--\r\n`)]);
+    const push = (token?: string) => app.inject({ method: 'POST', url: '/api/v1/imports/comando-bordo/sync', headers: { ...(token ? { 'x-sync-token': token } : {}), 'content-type': `multipart/form-data; boundary=${boundary}` }, payload });
+
+    expect((await push()).statusCode).toBe(401);
+    expect((await push('sgi_chave-que-nao-existe-123456')).statusCode).toBe(401);
+    expect((await call('POST', '/imports/sync/token', reader)).statusCode).toBe(403);
+    expect((await call('GET', '/imports/sync', admin)).json()).toMatchObject({ configured: false });
+
+    const { token } = (await call('POST', '/imports/sync/token', admin)).json();
+    const r1 = await push(token);
+    expect(r1.statusCode).toBe(200);
+    expect(r1.json()).toMatchObject({ trips: 1 });
+    expect((await push(token)).json()).toEqual({ unchanged: true });
+    const st = (await call('GET', '/imports/sync', admin)).json();
+    expect(st).toMatchObject({ configured: true });
+    expect(st.lastImportAt).toBeTruthy();
+    // A chave nunca aparece nos parâmetros nem fica guardada em texto.
+    expect(JSON.stringify((await call('GET', '/settings', reader)).json())).not.toMatch(/sync/);
+    const [org] = await db.select().from(s.organizations);
+    expect(JSON.stringify(org.settings)).not.toContain(token);
+
+    const novo = (await call('POST', '/imports/sync/token', admin)).json().token;
+    expect((await push(token)).statusCode).toBe(401); // a chave antiga deixou de valer
+    expect((await push(novo)).statusCode).toBe(200);
+    expect((await call('DELETE', '/imports/sync/token', admin)).statusCode).toBe(204);
+    expect((await push(novo)).statusCode).toBe(401);
+  });
+
   it('calcula o painel e registra manutenção reiniciando o prazo', async () => {
     const plan = await call('POST', '/maintenance/plan', admin, { vehicleId, item: 'Troca do óleo', intervalKm: 10000, intervalMonths: 12, lastKm: 35000, lastDate: '2025-10-01' });
     expect(plan.statusCode).toBe(201);

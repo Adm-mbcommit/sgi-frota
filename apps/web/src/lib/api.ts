@@ -1,5 +1,7 @@
 /** Cliente HTTP da API. O token fica em sessionStorage (some ao fechar o navegador). */
 const BASE = (import.meta.env.VITE_API_URL ?? '') + '/api/v1';
+/** Endereço completo da API (usado no script de sincronização da planilha). */
+export const apiUrl = (path: string) => new URL(BASE + path, window.location.href).toString();
 const KEY = 'sgi.token';
 
 export const tokenStore = {

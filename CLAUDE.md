@@ -61,6 +61,6 @@ e `can(...)` no front.
 ## Próximos passos (docs/ROADMAP.md)
 
 1. Telas de troca de senha (própria) e de parâmetros (`PUT /settings` já existe).
-2. Sincronização automática com a planilha do Google Drive (Vercel Cron).
+2. ~~Sincronização automática com a planilha do Google Drive~~ (feito: Importações → Sincronização automática).
 3. App do motorista (PWA) para substituir o formulário do Comando de Bordo.
 4. Alertas por e-mail/WhatsApp; anexos (NF, CRLV); relatórios PDF/Excel.

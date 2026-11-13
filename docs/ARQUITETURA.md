@@ -61,3 +61,20 @@ Toda alteração feita pela API grava em `audit_log` (quem, quando, o quê). Con
 Instantes em `timestamptz` (UTC). Horários sem fuso vindos das planilhas são interpretados como
 America/Sao_Paulo. Vencimentos e datas de serviço são `date` (sem fuso). "Hoje" e os filtros de período
 usam o calendário de São Paulo.
+
+## Sincronização automática com a planilha do Google
+
+Em vez de uma conta de serviço do Google, a própria planilha **Comando de Bordo - Veículos** empurra os dados:
+
+1. O ADMIN clica em *Importações → Sincronização automática → Ligar*. A API gera uma chave aleatória
+   (`POST /imports/sync/token`) e guarda só o hash sha256 em `organizations.settings.syncTokenHash`.
+   A tela monta o script (`apps/web/src/lib/sync-script.ts`) com o endereço da API e a chave.
+2. O script é colado em *Extensões → Apps Script* da planilha e a função `instalar` cria dois gatilhos:
+   ao enviar formulário e a cada 30 minutos. Há também o menu *SGI Frota → Enviar ao SGI agora*.
+3. A cada gatilho o script exporta a planilha como .xlsx e envia para `POST /imports/comando-bordo/sync`
+   com o cabeçalho `X-Sync-Token`. A API usa o mesmo importador do upload manual (idempotente por `external_key`).
+4. Se o conteúdo das abas for igual ao último envio (hash em `settings.syncLastHash`), nada é gravado;
+   só `syncLastCheckAt` é atualizado. Importações com novidade entram no histórico e no `audit_log` (sem usuário).
+
+As chaves `sync*` de `settings` são internas e não aparecem em `GET /settings`.
+Gerar nova chave invalida a anterior; *Desligar* apaga o hash.

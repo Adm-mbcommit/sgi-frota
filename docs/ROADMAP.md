@@ -14,8 +14,8 @@
 - [ ] Tela de parâmetros (hoje só via API) e de troca de senha
 
 ## Fase 3 — Automação dos dados
-- [ ] Sincronização automática com a planilha do Google Drive (conta de serviço do Google + Vercel Cron a cada 15 min),
-      substituindo o upload manual — o artefato fazia isso pelo conector do Claude
+- [x] Sincronização automática com a planilha do Google Drive: um Apps Script na planilha envia o .xlsx ao SGI
+      a cada formulário respondido e a cada 30 min (Importações → Sincronização automática). Ver ARQUITETURA.md.
 - [ ] Importação do Chronos pela API do rastreador, se disponível
 - [ ] Reprocessar registros quando um apelido de placa/motorista for cadastrado
 
