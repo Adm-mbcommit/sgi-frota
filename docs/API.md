@@ -27,6 +27,9 @@ Datas de calendário em `AAAA-MM-DD`; instantes em ISO 8601. Listas aceitam `?fr
 | GET / POST / PATCH | /tasks | todos / ADMIN, GESTOR | Pendências |
 | POST | /imports/comando-bordo | ADMIN, GESTOR | Upload .xlsx (campo `file`) |
 | POST | /imports/chronos | ADMIN, GESTOR | Upload .xlsx (campo `file`) |
+| POST | /imports/comando-bordo/sync | chave `X-Sync-Token` (sem login) | Envio automático da planilha pelo Apps Script; sem mudança desde o último envio responde `{ unchanged: true }` |
+| GET | /imports/sync | ADMIN | Situação da sincronização (ligada, última verificação/importação) |
+| POST / DELETE | /imports/sync/token | ADMIN | Gera nova chave (mostrada só uma vez; a anterior deixa de valer) / desliga |
 | GET | /imports | todos | Histórico de importações |
 | GET / POST / PATCH | /users | ADMIN | Usuários |
 | GET | /audit | ADMIN | Auditoria |

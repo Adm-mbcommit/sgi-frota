@@ -7,7 +7,9 @@ import * as s from '../db/schema.js';
 export async function loadConfig(db: DB, orgId: string): Promise<FleetConfig> {
   const [o] = await db.select().from(s.organizations).where(eq(s.organizations.id, orgId));
   const st = await db.select().from(s.stations).where(and(eq(s.stations.organizationId, orgId), eq(s.stations.active, true)));
-  return { ...DEFAULT_CONFIG, ...(o?.settings ?? {}), empresa: o?.companyLabel ?? DEFAULT_CONFIG.empresa, postos: st.map((x) => x.name) };
+  // Chaves sync* são internas da sincronização (hash da chave etc.): não vão para a configuração.
+  const settings = Object.fromEntries(Object.entries(o?.settings ?? {}).filter(([k]) => !k.startsWith('sync')));
+  return { ...DEFAULT_CONFIG, ...settings, empresa: o?.companyLabel ?? DEFAULT_CONFIG.empresa, postos: st.map((x) => x.name) };
 }
 
 export interface LoadedFleet { data: FleetData; ids: { vehicleByPlate: Map<string, string>; plateById: Map<string, string>; driverByName: Map<string, string> } }
