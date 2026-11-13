@@ -12,8 +12,8 @@ export default function Layout() {
   const { me, logout, can } = useAuth();
   const { qs } = usePeriod();
   const { pathname } = useLocation();
-  const current = MODULES.find((m) => pathname === m.path || pathname.startsWith(m.path + '/')) ?? MODULES[0];
-  const dash = useQuery({ queryKey: ['dashboard', qs], queryFn: () => api<Dashboard>('/dashboard?' + qs), enabled: current.id === 'frota' });
+  const current = MODULES.find((m) => pathname === m.path || pathname.startsWith(m.path + '/'));
+  const dash = useQuery({ queryKey: ['dashboard', qs], queryFn: () => api<Dashboard>('/dashboard?' + qs) });
   const badge: Record<string, number> = { alerts: dash.data?.kpis.maintenanceAlerts ?? 0, tasks: dash.data?.openTasks.length ?? 0 };
   const visible = (it: NavItem) => typeof it === 'string' || ((!it.roles || can(...it.roles)) && !(it.hide && can(...it.hide)));
   const link = (it: Exclude<NavItem, string>, base: string) => {
@@ -26,16 +26,25 @@ export default function Layout() {
     return shown.filter((it, i) => typeof it !== 'string' || (shown[i + 1] && typeof shown[i + 1] !== 'string'))
       .map((it) => (typeof it === 'string' ? <div className="grp" key={base + it}>{it}</div> : link(it, base)));
   };
+  const system = render(SYSTEM_NAV, '');
   return (
     <div className="app">
-      <nav className="side" aria-label="Módulos">
+      <nav className="side" aria-label="Setores">
         <div className="brand"><div className="logo"><img src="/logo.png" alt="Matias Brasil Engenharia" /></div><b>SGI Matias Brasil</b><span>Sistema de Gestão Interno</span></div>
-        {MODULES.length > 1 && <div className="mods" role="tablist" aria-label="Setores">
-          {MODULES.map((m) => <NavLink key={m.id} to={m.path} className={m.id === current.id ? 'act' : ''}>{m.name}</NavLink>)}
-        </div>}
-        <div className="mod">{current.name}</div>
-        {render(current.nav, current.path)}
-        {render(SYSTEM_NAV, '')}
+        <NavLink to="/" end className={({ isActive }) => 'top-link' + (isActive ? ' act' : '')}>Início</NavLink>
+        <div className="grp">Setores</div>
+        {MODULES.map((m) => {
+          const open = current?.id === m.id && !m.soon;
+          return (
+            <div key={m.id} className={'modgrp' + (open ? ' open' : '')}>
+              <NavLink to={m.path} className={'mod-link' + (current?.id === m.id ? ' act' : '')}>
+                <span>{m.name}</span>{m.soon ? <em>em breve</em> : <small aria-hidden>{open ? '▾' : '▸'}</small>}
+              </NavLink>
+              {open && <div className="sub">{render(m.nav, m.path)}</div>}
+            </div>
+          );
+        })}
+        {system.length > 0 && <><div className="grp">Sistema</div>{system}</>}
         <div className="user"><b>{me?.user.name}</b><span>{ROLE[me?.user.role ?? ''] ?? ''} · {me?.organization.name}</span><NavLink to="/conta">Minha conta</NavLink><button onClick={logout}>Sair</button></div>
       </nav>
       <main className="main"><Outlet /></main>

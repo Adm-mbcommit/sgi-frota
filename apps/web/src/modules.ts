@@ -7,11 +7,17 @@ import type { Role } from './lib/auth';
 /** Item do menu: [caminho relativo ao módulo, rótulo, contador opcional] ou o título de um grupo. */
 export type NavItem = string | { to: string; label: string; badge?: 'alerts' | 'tasks'; roles?: Role[]; hide?: Role[] };
 
-export interface AppModule { id: string; name: string; path: string; nav: NavItem[] }
+export interface AppModule {
+  id: string; name: string; path: string; nav: NavItem[];
+  /** Frase curta mostrada no Início. */
+  about: string;
+  /** Setor ainda em preparação: aparece no menu e no Início, sem telas. */
+  soon?: boolean;
+}
 
 export const MODULES: AppModule[] = [
   {
-    id: 'frota', name: 'Frota', path: '/frota',
+    id: 'frota', name: 'Frota', path: '/frota', about: 'Veículos, motoristas, viagens, abastecimentos, manutenção e custos.',
     nav: [
       { to: '', label: 'Painel' }, { to: 'manutencao', label: 'Manutenção', badge: 'alerts' },
       { to: 'veiculos', label: 'Veículos' }, { to: 'motoristas', label: 'Motoristas' }, { to: 'documentos', label: 'Documentos' },
@@ -22,11 +28,12 @@ export const MODULES: AppModule[] = [
       { to: 'parametros', label: 'Parâmetros', hide: ['MOTORISTA'] },
     ],
   },
-  // Próximos setores (Administrativo, RH…) entram aqui.
+  { id: 'administrativo', name: 'Administrativo', path: '/administrativo', about: 'Em preparação: vamos definir juntos o que este setor vai controlar.', soon: true, nav: [] },
+  { id: 'rh', name: 'RH', path: '/rh', about: 'Em preparação: vamos definir juntos o que este setor vai controlar.', soon: true, nav: [] },
 ];
 
 /** Itens do sistema, comuns a todos os módulos. */
-export const SYSTEM_NAV: NavItem[] = ['Sistema', { to: '/usuarios', label: 'Usuários', roles: ['ADMIN'] }];
+export const SYSTEM_NAV: NavItem[] = [{ to: '/usuarios', label: 'Usuários', roles: ['ADMIN'] }];
 
 /** Caminhos antigos (antes dos módulos), para não quebrar favoritos. */
 export const LEGACY_FROTA_PATHS = ['manutencao', 'veiculos', 'motoristas', 'documentos', 'viagens', 'abastecimentos', 'velocidade', 'custos', 'pendencias', 'importacoes', 'parametros'];
