@@ -13,6 +13,7 @@ import { Documentos, Motoristas, Veiculos } from './pages/Cadastros';
 import { Abastecimentos, Velocidade, Viagens } from './pages/Registros';
 import { Custos, Importacoes, Pendencias, Usuarios } from './pages/Gestao';
 import { MinhaConta, Parametros } from './pages/Conta';
+import { LEGACY_FROTA_PATHS } from './modules';
 
 const qc = new QueryClient({ defaultOptions: { queries: { staleTime: 60_000, refetchOnWindowFocus: true, retry: 1 } } });
 
@@ -23,19 +24,23 @@ function Root() {
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route index element={<Painel />} />
-        <Route path="manutencao" element={<Manutencao />} />
-        <Route path="veiculos" element={<Veiculos />} />
-        <Route path="motoristas" element={<Motoristas />} />
-        <Route path="documentos" element={<Documentos />} />
-        <Route path="viagens" element={<Viagens />} />
-        <Route path="abastecimentos" element={<Abastecimentos />} />
-        <Route path="velocidade" element={<Velocidade />} />
-        <Route path="custos" element={<Custos />} />
-        <Route path="pendencias" element={<Pendencias />} />
-        <Route path="importacoes" element={<Importacoes />} />
+        <Route index element={<Navigate to="/frota" replace />} />
+        <Route path="frota">
+          <Route index element={<Painel />} />
+          <Route path="manutencao" element={<Manutencao />} />
+          <Route path="veiculos" element={<Veiculos />} />
+          <Route path="motoristas" element={<Motoristas />} />
+          <Route path="documentos" element={<Documentos />} />
+          <Route path="viagens" element={<Viagens />} />
+          <Route path="abastecimentos" element={<Abastecimentos />} />
+          <Route path="velocidade" element={<Velocidade />} />
+          <Route path="custos" element={<Custos />} />
+          <Route path="pendencias" element={<Pendencias />} />
+          <Route path="importacoes" element={<Importacoes />} />
+          {!can('MOTORISTA') && <Route path="parametros" element={<Parametros />} />}
+        </Route>
+        {LEGACY_FROTA_PATHS.map((p) => <Route key={p} path={p} element={<Navigate to={'/frota/' + p} replace />} />)}
         <Route path="conta" element={<MinhaConta />} />
-        {!can('MOTORISTA') && <Route path="parametros" element={<Parametros />} />}
         {can('ADMIN') && <Route path="usuarios" element={<Usuarios />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

@@ -16,7 +16,7 @@ export function sheetIdFromUrl(s: string) {
 
 export function syncScript(url: string, token: string, sheetId: string) {
   return `/**
- * SGI Frota — envio automático do Comando de Bordo (projeto separado da planilha).
+ * SGI Matias Brasil (módulo Frota) — envio automático do Comando de Bordo (projeto separado da planilha).
  * Envia a planilha ao SGI a cada 10 minutos. Não altera a planilha nem o sistema do QR Code.
  * Para ativar: salve (ícone de disquete), escolha a função "instalarSGI" e clique em Executar.
  * Para enviar na hora: escolha "enviarParaSGI" e clique em Executar.
