@@ -7,14 +7,31 @@ import { usePeriod } from '../lib/period';
 import type { Dashboard } from '../lib/types';
 import { Header } from '../components/ui';
 import { MODULES, type AppModule } from '../modules';
+import { dueInfo, useMyTasks } from './Tarefas';
 
 export default function Inicio() {
   const { me } = useAuth();
   return (
     <>
       <Header title={`Olá, ${me?.user.name.split(' ')[0] ?? ''}`} sub="SGI Matias Brasil · escolha um setor." />
+      <MyTasksSummary />
       <div className="cards">{MODULES.map((m) => <ModuleCard key={m.id} m={m} />)}</div>
     </>
+  );
+}
+
+/** Lembrete das tarefas pessoais atrasadas ou para hoje. */
+function MyTasksSummary() {
+  const q = useMyTasks();
+  const open = (q.data ?? []).filter((t) => t.status !== 'FEITA');
+  if (!open.length) return null;
+  const late = open.filter((t) => dueInfo(t)?.cls === 'bad').length;
+  const today = open.filter((t) => dueInfo(t)?.cls === 'warn').length;
+  return (
+    <div className="banner" style={{ marginBottom: 14, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+      <span><b>Minhas tarefas:</b> {open.length} em aberto{today ? ` · ${today} para hoje` : ''}{late ? ` · ${late} atrasada${late > 1 ? 's' : ''}` : ''}</span>
+      <Link className="btn sm" to="/tarefas">Ver tarefas</Link>
+    </div>
   );
 }
 

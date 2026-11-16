@@ -14,6 +14,7 @@ import registryRoutes from './modules/registry.js';
 import operationsRoutes from './modules/operations.js';
 import managementRoutes from './modules/management.js';
 import importRoutes from './modules/imports.js';
+import myTaskRoutes from './modules/my-tasks.js';
 
 declare module 'fastify' { interface FastifyInstance { db: DB } }
 
@@ -37,7 +38,7 @@ export async function buildApp(env: Env, db: DB, opts: FastifyServerOptions = {}
   app.get('/api/health', health);
 
   await app.register(async (api) => {
-    for (const r of [authRoutes, userRoutes, registryRoutes, operationsRoutes, managementRoutes, importRoutes]) await api.register(r);
+    for (const r of [authRoutes, userRoutes, registryRoutes, operationsRoutes, managementRoutes, importRoutes, myTaskRoutes]) await api.register(r);
   }, { prefix: '/api/v1' });
 
   return app;

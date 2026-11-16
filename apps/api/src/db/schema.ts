@@ -1,5 +1,5 @@
 /**
- * Modelo de dados do SGI Frota (PostgreSQL).
+ * Modelo de dados do SGI Matias Brasil (PostgreSQL).
  *
  * Princípios:
  * - Multiempresa: toda tabela de negócio tem `organization_id`. Um usuário pertence a uma empresa.
@@ -287,3 +287,43 @@ export const imports = pgTable('imports', {
   userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
   at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+/* ---------- tarefas pessoais (cada usuário vê só as suas) ---------- */
+
+export const personalTaskStatusEnum = pgEnum('personal_task_status', ['A_FAZER', 'AGUARDANDO', 'FEITA']);
+
+/** Tarefas do caderno do usuário: título, detalhe, pessoa envolvida e prazo opcionais. */
+export const personalTasks = pgTable('personal_tasks', {
+  id: id(),
+  organizationId: org(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  details: text('details'),
+  /** Com quem a tarefa depende ou envolve (texto livre: "Diego", "João"). */
+  person: text('person'),
+  dueDate: date('due_date'),
+  status: personalTaskStatusEnum('status').notNull().default('A_FAZER'),
+  doneAt: timestamp('done_at', { withTimezone: true }),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+}, (t) => [index('personal_tasks_user_idx').on(t.userId, t.status)]);
+
+/** Itens da rotina diária do usuário (voltam desmarcados todo dia). */
+export const routineItems = pgTable('routine_items', {
+  id: id(),
+  organizationId: org(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  position: integer('position').notNull().default(0),
+  active: boolean('active').notNull().default(true),
+  createdAt: createdAt(),
+});
+
+/** Marcação de um item da rotina num dia (data de calendário em America/Sao_Paulo). */
+export const routineChecks = pgTable('routine_checks', {
+  id: id(),
+  organizationId: org(),
+  itemId: uuid('item_id').notNull().references(() => routineItems.id, { onDelete: 'cascade' }),
+  day: date('day').notNull(),
+  createdAt: createdAt(),
+}, (t) => [uniqueIndex('routine_checks_item_day_uq').on(t.itemId, t.day)]);

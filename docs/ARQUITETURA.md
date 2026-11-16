@@ -15,7 +15,7 @@ Em servidor próprio (alternativa): Caddy (HTTPS) → nginx (web) → API Fastif
 O SGI Matias Brasil é dividido em módulos, um por setor (Frota, e depois Administrativo, RH…).
 No front, cada módulo é declarado em `apps/web/src/modules.ts` (nome, caminho e menu) e tem as rotas em
 `/<módulo>/...`. O menu lateral mostra Início e os setores; o setor aberto mostra as suas telas recuadas, e setores com `soon: true` aparecem como "em breve". A tela de Início (`pages/Inicio.tsx`) tem um cartão por setor.
-Usuários e Minha conta ficam fora dos módulos. Na API, cada setor terá os seus arquivos em `src/modules/`
+Usuários, Minha conta e **Minhas tarefas** ficam fora dos módulos. As tarefas são pessoais: tabelas `personal_tasks`, `routine_items` e `routine_checks`, sempre filtradas por organização **e** usuário. Na API, cada setor terá os seus arquivos em `src/modules/`
 e as suas tabelas, sempre com `organization_id`.
 
 ## Decisões

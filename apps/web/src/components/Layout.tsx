@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth';
 import type { Dashboard } from '../lib/types';
 import { usePeriod } from '../lib/period';
 import { MODULES, SYSTEM_NAV, type NavItem } from '../modules';
+import { dueInfo, useMyTasks } from '../pages/Tarefas';
 
 const ROLE: Record<string, string> = { ADMIN: 'Administrador', GESTOR: 'Gestor', MOTORISTA: 'Motorista', LEITOR: 'Leitura' };
 
@@ -14,6 +15,8 @@ export default function Layout() {
   const { pathname } = useLocation();
   const current = MODULES.find((m) => pathname === m.path || pathname.startsWith(m.path + '/'));
   const dash = useQuery({ queryKey: ['dashboard', qs], queryFn: () => api<Dashboard>('/dashboard?' + qs) });
+  const tasks = useMyTasks();
+  const myLate = (tasks.data ?? []).filter((t) => dueInfo(t)?.cls === 'bad' || dueInfo(t)?.cls === 'warn').length;
   const badge: Record<string, number> = { alerts: dash.data?.kpis.maintenanceAlerts ?? 0, tasks: dash.data?.openTasks.length ?? 0 };
   const visible = (it: NavItem) => typeof it === 'string' || ((!it.roles || can(...it.roles)) && !(it.hide && can(...it.hide)));
   const link = (it: Exclude<NavItem, string>, base: string) => {
@@ -32,6 +35,7 @@ export default function Layout() {
       <nav className="side" aria-label="Setores">
         <div className="brand"><div className="logo"><img src="/logo.png" alt="Matias Brasil Engenharia" /></div><b>SGI Matias Brasil</b><span>Sistema de Gestão Interno</span></div>
         <NavLink to="/" end className={({ isActive }) => 'top-link' + (isActive ? ' act' : '')}>Início</NavLink>
+        <NavLink to="/tarefas" className={({ isActive }) => 'top-link' + (isActive ? ' act' : '')}>Minhas tarefas{myLate ? <i title="Atrasadas ou para hoje">{myLate}</i> : null}</NavLink>
         <div className="grp">Setores</div>
         {MODULES.map((m) => {
           const open = current?.id === m.id && !m.soon;
