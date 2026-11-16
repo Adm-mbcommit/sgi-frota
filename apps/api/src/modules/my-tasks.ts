@@ -12,7 +12,7 @@ import { audit } from '../services/audit.js';
 const idParam = z.object({ id: uuid });
 const text = (max: number) => z.string().trim().max(max);
 const optText = (max: number) => text(max).nullable().optional().transform((v) => (v ? v : null));
-const status = z.enum(['A_FAZER', 'AGUARDANDO', 'FEITA']);
+const status = z.enum(['A_FAZER', 'EM_ANDAMENTO', 'AGUARDANDO', 'FEITA']);
 
 /** Data de hoje no fuso de São Paulo (AAAA-MM-DD). */
 export const todaySP = (now = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(now);

@@ -34,7 +34,7 @@ O sistema passou a se chamar **SGI Matias Brasil**, com um módulo por setor. Fr
 ## Outros setores (módulos do SGI Matias Brasil)
 - [x] Nome SGI Matias Brasil, tela de Início com os setores e Frota como setor (telas em `/frota/...`)
 - [x] Administrativo e RH aparecem como "em breve"
-- [x] Minhas tarefas (fora dos setores): caderno pessoal com A fazer / Aguardando / Feitas, pessoa, prazo e rotina diária; colar uma lista inteira de uma vez
+- [x] Minhas tarefas (fora dos setores): caderno pessoal com Em andamento / A fazer / Aguardando / Feitas, pessoa, prazo e rotina diária; colar uma lista inteira de uma vez
 - [ ] Administrativo: levantar com o usuário o que o setor precisa
 - [ ] RH: levantar com o usuário o que o setor precisa
 - [ ] Permissões por módulo (quem vê cada setor)
