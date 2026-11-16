@@ -11,6 +11,8 @@ export const TASK_STATUS: [TaskStatus, string][] = [['A_FAZER', 'A fazer'], ['EM
 export interface PersonalTask { id: string; title: string; details: string | null; person: string | null; dueDate: string | null; status: TaskStatus; doneAt: string | null; createdAt: string }
 interface Routine { day: string; items: { id: string; title: string; checked: boolean }[] }
 
+const norm = (v: string) => v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
 export const useMyTasks = () => useQuery({ queryKey: ['my-tasks'], queryFn: () => api<PersonalTask[]>('/my/tasks') });
 
 /** Situação do prazo: atrasada, hoje ou futura. */
@@ -40,7 +42,10 @@ export default function Tarefas() {
     qc.setQueryData<PersonalTask[]>(['my-tasks'], (l) => l?.map((x) => (x.id === t.id ? { ...x, status, doneAt: status === 'FEITA' ? new Date().toISOString() : null } : x)));
     try { await api(`/my/tasks/${t.id}`, { method: 'PATCH', json: { status } }); } finally { await refresh(); }
   };
-  const all = q.data ?? [];
+  const [search, setSearch] = useState('');
+  const terms = norm(search).split(/\s+/).filter(Boolean);
+  // procura no título, no detalhe e na pessoa, sem diferenciar acentos e maiúsculas
+  const all = (q.data ?? []).filter((t) => !terms.length || terms.every((w) => norm([t.title, t.details, t.person].join(' ')).includes(w)));
   const doing = all.filter((t) => t.status === 'EM_ANDAMENTO');
   const todo = all.filter((t) => t.status === 'A_FAZER');
   const waiting = all.filter((t) => t.status === 'AGUARDANDO');
@@ -56,7 +61,11 @@ export default function Tarefas() {
               onPaste={(e) => { const t = e.clipboardData.getData('text'); if (/\n/.test(t.trim())) { e.preventDefault(); setPaste(t); } }} />
             <button className="btn pri" type="submit" disabled={!title.trim()}>Anotar</button>
           </form>
-          <button className="btn sm" style={{ marginTop: 8 }} onClick={() => setPaste('')}>Colar uma lista de tarefas</button>
+          <div className="task-tools">
+            <button className="btn sm" onClick={() => setPaste('')}>Colar uma lista de tarefas</button>
+            <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="🔍 Pesquisar tarefa" aria-label="Pesquisar tarefa" />
+          </div>
+          {terms.length > 0 && q.data && <p className="note">{all.length ? `${all.length} tarefa${all.length > 1 ? 's' : ''} encontrada${all.length > 1 ? 's' : ''} para "${search.trim()}".` : `Nenhuma tarefa encontrada para "${search.trim()}".`}</p>}
           {err && <div className="err">{err}</div>}
           <Loading q={q} />
           {q.data && <>
@@ -64,13 +73,15 @@ export default function Tarefas() {
               <h2>Em andamento <span className="count-pill">{doing.length}</span></h2>
               <div className="panel tasklist">{doing.map(row)}</div>
             </>}
-            <h2>A fazer <span className="count-pill">{todo.length}</span></h2>
-            <div className="panel tasklist">{todo.length ? todo.map(row) : <p className="note">Nada pendente. 🎉</p>}</div>
+            {(!terms.length || todo.length > 0) && <>
+              <h2>A fazer <span className="count-pill">{todo.length}</span></h2>
+              <div className="panel tasklist">{todo.length ? todo.map(row) : <p className="note">Nada pendente. 🎉</p>}</div>
+            </>}
             {waiting.length > 0 && <>
               <h2>Aguardando <span className="count-pill">{waiting.length}</span></h2>
               <div className="panel tasklist">{waiting.map(row)}</div>
             </>}
-            {done.length > 0 && <details className="done-box">
+            {done.length > 0 && <details className="done-box" open={terms.length > 0 || undefined}>
               <summary>Feitas nos últimos 30 dias ({done.length})</summary>
               <div className="panel tasklist">{done.map(row)}</div>
             </details>}
@@ -110,9 +121,13 @@ function TaskRow({ t, onStatus, onEdit }: { t: PersonalTask; onStatus: (s: Perso
           {due && <span className={'chip ' + due.cls}>{due.label}</span>}
         </span>}
       </div>
-      {!done && <select className="task-status" value={t.status} onChange={(e) => onStatus(e.target.value as TaskStatus)} aria-label="Situação">
-        {TASK_STATUS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-      </select>}
+      {/* toda tarefa nova é "A fazer"; clicar de novo no botão ativo volta para "A fazer"; "Feita" é o quadradinho */}
+      {!done && <div className="task-flags" role="group" aria-label="Situação">
+        {(['EM_ANDAMENTO', 'AGUARDANDO'] as const).map((v) => (
+          <button key={v} type="button" className={'btn sm' + (t.status === v ? ' on' : '')} aria-pressed={t.status === v}
+            onClick={() => onStatus(t.status === v ? 'A_FAZER' : v)}>{v === 'EM_ANDAMENTO' ? 'Em andamento' : 'Aguardando'}</button>
+        ))}
+      </div>}
     </div>
   );
 }
