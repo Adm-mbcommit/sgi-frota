@@ -155,8 +155,11 @@ dialog.paste-dialog{width:min(620px,94vw)}
 .paste-preview ul{margin:6px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 .paste-preview .chip{margin-left:6px}
 .task-flags{display:flex;gap:6px;flex:none;flex-wrap:wrap;justify-content:flex-end}
-.task-flags .btn.on{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
-@media (max-width:560px){.task{flex-wrap:wrap}.task-flags{width:100%;padding-left:28px;justify-content:flex-start}}
+.icon-btn{all:unset;box-sizing:border-box;cursor:pointer;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;font-size:17px;border:1px solid var(--line);border-radius:8px;background:var(--surface);filter:grayscale(1);opacity:.55;transition:opacity .15s,filter .15s}
+.icon-btn:hover{opacity:1;filter:none}
+.icon-btn.on{filter:none;opacity:1;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--bg)}
+.icon-btn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+@media (max-width:560px){.task-flags{gap:4px}.icon-btn{width:30px;height:30px;font-size:15px}}
 .task-tools{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
 .task-tools input{flex:1;min-width:180px;font:inherit;font-size:13px;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 10px}
 

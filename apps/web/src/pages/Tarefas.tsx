@@ -108,12 +108,13 @@ export default function Tarefas() {
   );
 }
 
+const STATUS_ICONS: [TaskStatus, string, string][] = [['FEITA', '✅', 'Feita'], ['EM_ANDAMENTO', '🔄', 'Em andamento'], ['AGUARDANDO', '⏳', 'Aguardando']];
+
 function TaskRow({ t, onStatus, onEdit }: { t: PersonalTask; onStatus: (s: PersonalTask['status']) => void; onEdit: () => void }) {
   const done = t.status === 'FEITA';
   const due = dueInfo(t);
   return (
     <div className={'task' + (done ? ' done' : '')}>
-      <input type="checkbox" checked={done} onChange={() => onStatus(done ? 'A_FAZER' : 'FEITA')} aria-label={done ? 'Desmarcar' : 'Marcar como feita'} />
       <div className="task-body" onClick={onEdit} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && onEdit()}>
         <span className="task-title">{t.title}</span>
         {t.details && <span className="task-details">↳ {t.details}</span>}
@@ -123,13 +124,14 @@ function TaskRow({ t, onStatus, onEdit }: { t: PersonalTask; onStatus: (s: Perso
           {due && <span className={'chip ' + due.cls}>{due.label}</span>}
         </span>}
       </div>
-      {/* toda tarefa nova é "A fazer"; clicar de novo no botão ativo volta para "A fazer"; "Feita" é o quadradinho */}
-      {!done && <div className="task-flags" role="group" aria-label="Situação">
-        {(['EM_ANDAMENTO', 'AGUARDANDO'] as const).map((v) => (
-          <button key={v} type="button" className={'btn sm' + (t.status === v ? ' on' : '')} aria-pressed={t.status === v}
-            onClick={() => onStatus(t.status === v ? 'A_FAZER' : v)}>{v === 'EM_ANDAMENTO' ? '🔄 Em andamento' : '⏳ Aguardando'}</button>
+      {/* toda tarefa nova é "A fazer"; clicar de novo no ícone ativo volta para "A fazer" */}
+      <div className="task-flags" role="group" aria-label="Situação">
+        {STATUS_ICONS.map(([v, icon, name]) => (
+          <button key={v} type="button" className={'icon-btn' + (t.status === v ? ' on' : '')} aria-pressed={t.status === v}
+            title={t.status === v ? `${name} (clique para voltar a "A fazer")` : `Marcar como ${name.toLowerCase()}`} aria-label={name}
+            onClick={() => onStatus(t.status === v ? 'A_FAZER' : v)}>{icon}</button>
         ))}
-      </div>}
+      </div>
     </div>
   );
 }
