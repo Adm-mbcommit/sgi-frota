@@ -205,4 +205,32 @@ d('API', () => {
     expect((await call('GET', '/my/tasks', reader)).json()).toHaveLength(0);
     expect((await call('POST', '/my/tasks/bulk', admin, { tasks: [] })).statusCode).toBe(400);
   });
+  it('aniversários: importa a planilha, atualiza sem duplicar e esconde o ano de quem só consulta', async () => {
+    const wb = new ExcelJS.Workbook(); const ws = wb.addWorksheet('Planilha1');
+    ws.addRow([null, null, 'ANIVERSARIANTES', 'DATA']);
+    ws.addRow([null, null, 'Diego Rafael Brasil', new Date(Date.UTC(1988, 7, 12))]);
+    ws.addRow([null, null, 'Noêmia Soares Guimarães', '05/11/....']);
+    ws.addRow([null, null, 'Sem data', null]);
+    const boundary = '----aniv';
+    const payload = Buffer.concat([
+      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="Aniversarios.xlsx"\r\nContent-Type: application/octet-stream\r\n\r\n`),
+      Buffer.from(await wb.xlsx.writeBuffer()), Buffer.from(`\r\n--${boundary}--\r\n`)]);
+    const up = (token: string) => app.inject({ method: 'POST', url: '/api/v1/birthdays/import', headers: { authorization: 'Bearer ' + token, 'content-type': `multipart/form-data; boundary=${boundary}` }, payload });
+    expect((await up(reader)).statusCode).toBe(403);
+    expect((await up(admin)).json()).toEqual({ created: 2, updated: 0 });
+    expect((await up(admin)).json()).toEqual({ created: 0, updated: 2 });
+    const list = (await call('GET', '/birthdays', admin)).json();
+    expect(list).toEqual([
+      { id: expect.any(String), name: 'Diego Rafael Brasil', day: 12, month: 8, year: 1988 },
+      { id: expect.any(String), name: 'Noêmia Soares Guimarães', day: 5, month: 11, year: null },
+    ]);
+    expect((await call('GET', '/birthdays', reader)).json()[0]).not.toHaveProperty('year');
+    expect((await call('POST', '/birthdays', admin, { name: 'X', day: 31, month: 2 })).statusCode).toBe(400);
+    const n = await call('POST', '/birthdays', admin, { name: 'Suyane Vernizze', day: 1, month: 12 });
+    expect(n.statusCode).toBe(201);
+    expect((await call('POST', '/birthdays', admin, { name: 'suyane vernizze', day: 2, month: 12 })).statusCode).toBe(409);
+    expect((await call('PATCH', `/birthdays/${n.json().id}`, admin, { name: 'Suyane Vernizze', day: 2, month: 12 })).json().day).toBe(2);
+    expect((await call('DELETE', `/birthdays/${n.json().id}`, reader)).statusCode).toBe(403);
+    expect((await call('DELETE', `/birthdays/${n.json().id}`, admin)).statusCode).toBe(204);
+  });
 });

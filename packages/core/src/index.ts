@@ -8,3 +8,4 @@ export * from './fleet.js';
 export * from './analyze.js';
 export * from './legacy.js';
 export * from './tasks.js';
+export * from './calendar.js';

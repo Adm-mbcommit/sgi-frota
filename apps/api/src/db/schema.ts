@@ -327,3 +327,17 @@ export const routineChecks = pgTable('routine_checks', {
   day: date('day').notNull(),
   createdAt: createdAt(),
 }, (t) => [uniqueIndex('routine_checks_item_day_uq').on(t.itemId, t.day)]);
+
+/* ---------- calendário ---------- */
+
+/** Aniversários da equipe (o ano é opcional e não aparece na tela). */
+export const birthdays = pgTable('birthdays', {
+  id: id(),
+  organizationId: org(),
+  name: text('name').notNull(),
+  day: integer('day').notNull(),
+  month: integer('month').notNull(),
+  year: integer('year'),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+}, (t) => [uniqueIndex('birthdays_org_name_uq').on(t.organizationId, sql`lower(${t.name})`)]);

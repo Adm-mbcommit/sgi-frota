@@ -51,3 +51,13 @@ Erros: `{ error, message }` com 400 (validação, com `issues`), 401, 403, 404, 
 | DELETE | /my/routine/:id | todos | Desativa o item (marcações antigas ficam) |
 | PUT | /my/routine/:id/check | todos | `{checked}` para hoje |
 
+## Calendário
+
+Feriados nacionais são calculados no front (`nationalHolidays` do `@sgi/core`, inclui Carnaval e Corpus Christi como ponto facultativo).
+
+| Método | Rota | Perfil | Observação |
+|---|---|---|---|
+| GET | /birthdays | todos | `{id, name, day, month}`; `year` só para ADMIN/GESTOR |
+| POST / PATCH /:id / DELETE /:id | /birthdays | ADMIN, GESTOR | `{name, day, month, year?}`; nome único por empresa |
+| POST | /birthdays/import | ADMIN, GESTOR | .xlsx com nome e data em qualquer coluna; atualiza quem já existe |
+

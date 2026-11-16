@@ -17,7 +17,8 @@ Interface, mensagens, documentação e commits em **português**; identificadore
   `src/vercel.ts` adapta a API para Função Serverless; `api/index.mjs` (raiz) aponta para o build.
 - `apps/web` — React 18 + Vite + TanStack Query. Telas em `src/pages/`, componentes em `src/components/ui.tsx`.
   Módulos (setores) e seus menus em `src/modules.ts`; rotas de cada módulo em `/<módulo>/...` (`main.tsx`).
-  Usuários, Minha conta e Minhas tarefas (`pages/Tarefas.tsx`, pessoal de cada usuário) ficam fora dos módulos.
+  Usuários, Minha conta, Minhas tarefas (`pages/Tarefas.tsx`, pessoal de cada usuário) e Calendário
+  (`pages/Calendario.tsx`: feriados de `@sgi/core` + tabela `birthdays`) ficam fora dos módulos.
   O visual (tokens CSS, tema claro/escuro) veio do artefato: `src/styles.css`.
 - `docs/` — ARQUITETURA, REGRAS-DE-NEGOCIO (parâmetros e paridade), DEPLOY, API, ROADMAP. Atualize junto com o código.
 - `infra/` — alternativa Docker + Caddy (não usada em produção).
