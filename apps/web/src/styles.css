@@ -191,3 +191,18 @@ dialog.paste-dialog{width:min(620px,94vw)}
 .cal-banner{margin-bottom:10px;display:flex;gap:6px 16px;align-items:center;flex-wrap:wrap}
 .side a i.cake{background:transparent;padding:0;min-width:0}
 @media (max-width:560px){.cal-day{min-height:58px;padding:3px}.cal-ev{font-size:9.5px;padding:0 2px}.cal-wd{padding:4px;font-size:10px}}
+
+/* calendário pequeno (ao lado das tarefas) */
+.mini-cal-box h2{margin-top:22px}
+.mini-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.mini-nav b{font-size:14px}
+.mini-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+.mini-wd{font-size:10.5px;color:var(--muted);font-weight:600;padding:2px 0}
+.mini-day{position:relative;font-family:var(--mono);font-size:12px;padding:5px 0;border-radius:6px;cursor:default}
+.mini-day.hol{background:var(--bad-bg);color:var(--bad);font-weight:700}
+.mini-day.opt{background:var(--warn-bg);color:var(--warn)}
+.mini-day.today{box-shadow:inset 0 0 0 2px var(--accent);font-weight:700}
+.mini-day.bday::after,.mini-dot{content:'';display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--accent)}
+.mini-day.bday::after{position:absolute;left:50%;bottom:1px;transform:translateX(-50%)}
+.mini-key{font-size:11px;margin:8px 0 4px}
+.mini-h{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:12px 0 2px}

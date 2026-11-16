@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { fd, todayIso } from '../lib/format';
 import { FormDialog, Header, Loading, nn } from '../components/ui';
+import { MiniCalendar } from './Calendario';
 
 export type TaskStatus = 'A_FAZER' | 'EM_ANDAMENTO' | 'AGUARDANDO' | 'FEITA';
 export const TASK_STATUS: [TaskStatus, string][] = [['A_FAZER', 'A fazer'], ['EM_ANDAMENTO', 'Em andamento'], ['AGUARDANDO', 'Aguardando'], ['FEITA', 'Feita']];
@@ -87,7 +88,7 @@ export default function Tarefas() {
             </details>}
           </>}
         </div>
-        <RoutinePanel />
+        <div><RoutinePanel /><MiniCalendar /></div>
       </div>
       {paste !== null && <PasteDialog initial={paste} onClose={() => setPaste(null)} onDone={refresh} />}
       {edit && <FormDialog title="Tarefa" onClose={() => setEdit(null)}
