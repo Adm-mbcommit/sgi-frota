@@ -229,3 +229,20 @@ button.day-item.sel{outline:2px solid var(--accent)}
 .day-form{border-top:1px solid var(--line);padding-top:10px}
 .day-form h4{margin:0 0 8px;font-size:13px;color:var(--muted)}
 .day-row{display:flex;gap:10px}.day-row .fld{flex:1}
+
+/* ---------- Manutenção: alertas ---------- */
+.due-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.due-card{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.due-card.vencido{border-left-color:var(--bad)}.due-card.atencao{border-left-color:var(--warn)}.due-card.confirmar{border-left-color:var(--conf)}.due-card.ok{border-left-color:var(--ok)}
+.due-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.due-items{font-weight:500}
+.due-facts{margin:0;padding:0;list-style:none;font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.due-card .btn{align-self:flex-start;margin-top:4px}
+.ok-banner{background:var(--ok-bg);color:var(--ok)}
+.bad-banner{background:var(--bad-bg);color:var(--bad)}
+.noplan-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--line)}
+.noplan-row:last-child{border-bottom:0}.noplan-act{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.cal-ev.maintenance{background:var(--conf-bg);color:var(--conf);white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.mini-day.maint{outline:1px dashed var(--conf);outline-offset:-2px}
+.day-item.maintenance{background:var(--conf-bg);color:var(--conf)}.day-item.maintenance a{color:inherit}
+.day-item.late,.cal-next .late,.cal-when.late{color:var(--bad);font-weight:600}

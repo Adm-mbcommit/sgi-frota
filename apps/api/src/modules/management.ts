@@ -1,6 +1,6 @@
 /** Manutenção, documentos, custos e pendências. */
 import type { FastifyInstance } from 'fastify';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { costCategories, costs, maintenancePlan, maintenanceRecords, tasks, vehicleDocuments, vehicles } from '../db/schema.js';
 import { HttpError, isoDate, notFound, parse, uuid } from '../plugins/http.js';
@@ -41,6 +41,28 @@ export default async function managementRoutes(app: FastifyInstance) {
     if (!p) throw notFound('Item do plano');
     await audit(db, req, 'update', 'maintenance_plan', id, b);
     return p;
+  });
+
+  /**
+   * Copia o plano de manutenção de um veículo para outro (mesmos itens e intervalos).
+   * Km e data da última revisão do veículo de destino valem para todos os itens; sem eles, os itens
+   * ficam marcados para conferir. Itens que o destino já tem são mantidos.
+   */
+  app.post('/maintenance/plan/copy', write, async (req, reply) => {
+    const b = parse(z.object({ fromVehicleId: uuid, toVehicleId: uuid, lastKm: z.number().int().nonnegative().nullable().optional(), lastDate: isoDate.nullable().optional() })
+      .refine((x) => x.fromVehicleId !== x.toVehicleId, { message: 'Escolha dois veículos diferentes.' }), req.body);
+    const vs = await db.select({ id: vehicles.id }).from(vehicles).where(and(eq(vehicles.organizationId, req.user.org), inArray(vehicles.id, [b.fromVehicleId, b.toVehicleId])));
+    if (vs.length !== 2) throw notFound('Veículo');
+    const src = await db.select().from(maintenancePlan).where(and(eq(maintenancePlan.organizationId, req.user.org), eq(maintenancePlan.vehicleId, b.fromVehicleId), eq(maintenancePlan.active, true)));
+    if (!src.length) throw new HttpError(400, 'empty_plan', 'O veículo de origem não tem plano de manutenção.');
+    const have = new Set((await db.select({ item: maintenancePlan.item }).from(maintenancePlan).where(eq(maintenancePlan.vehicleId, b.toVehicleId))).map((x) => x.item.toLowerCase()));
+    const rows = src.filter((x) => !have.has(x.item.toLowerCase())).map((x) => ({
+      organizationId: req.user.org, vehicleId: b.toVehicleId, item: x.item, intervalKm: x.intervalKm, intervalMonths: x.intervalMonths,
+      lastKm: b.lastKm ?? null, lastDate: b.lastDate ?? null, needsCheck: b.lastKm == null, source: 'Copiado no SGI de outro veículo',
+    }));
+    if (rows.length) await db.insert(maintenancePlan).values(rows);
+    await audit(db, req, 'copy', 'maintenance_plan', b.toVehicleId, { ...b, created: rows.length });
+    return reply.code(201).send({ created: rows.length, skipped: src.length - rows.length });
   });
 
   /** Registrar serviço executado: grava histórico, reinicia o prazo e (opcional) lança o custo. */

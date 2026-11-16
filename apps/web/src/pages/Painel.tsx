@@ -63,7 +63,7 @@ export default function Painel() {
             <div className="note">Excessos acima de {d.config.speed} km/h, com o motorista identificado pelo horário das viagens.</div></div></div>
         </div>
       </>}
-      {reg && <MaintenanceDialog item={reg} onClose={() => setReg(null)} />}
+      {reg && <MaintenanceDialog items={[reg]} onClose={() => setReg(null)} />}
     </>
   );
 }

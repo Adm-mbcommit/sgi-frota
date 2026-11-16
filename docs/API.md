@@ -63,3 +63,9 @@ Feriados nacionais são calculados no front (`nationalHolidays` do `@sgi/core`, 
 | GET | /appointments?from&to | todos | Compromissos do usuário + os da equipe (`shared`); `{id, date, time, title, notes, shared, mine, owner}` |
 | POST / PATCH /:id / DELETE /:id | /appointments | todos | `{date, time?, title, notes?, shared?}`; só quem criou altera ou exclui |
 
+## Manutenção (complemento)
+
+| Método | Rota | Perfil | Observação |
+|---|---|---|---|
+| POST | /maintenance/plan/copy | ADMIN, GESTOR | `{fromVehicleId, toVehicleId, lastKm?, lastDate?}` copia itens e intervalos; mantém os que o destino já tem |
+

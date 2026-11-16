@@ -248,4 +248,15 @@ d('API', () => {
     expect((await call('GET', '/appointments?from=2026-12-01&to=2026-12-31', admin)).json()).toHaveLength(0);
     expect((await call('DELETE', `/appointments/${mineA.json().id}`, admin)).statusCode).toBe(204);
   });
+  it('copia o plano de manutenção para outro veículo', async () => {
+    const v2 = (await call('POST', '/vehicles', admin, { plate: 'MFS7D92', name: 'UNO', refKm: 227000 })).json();
+    const r = await call('POST', '/maintenance/plan/copy', admin, { fromVehicleId: vehicleId, toVehicleId: v2.id, lastKm: 220000, lastDate: '2026-08-01' });
+    expect(r.statusCode).toBe(201);
+    expect(r.json().created).toBeGreaterThan(0);
+    expect((await call('POST', '/maintenance/plan/copy', admin, { fromVehicleId: vehicleId, toVehicleId: v2.id })).json()).toMatchObject({ created: 0 });
+    expect((await call('POST', '/maintenance/plan/copy', reader, { fromVehicleId: vehicleId, toVehicleId: v2.id })).statusCode).toBe(403);
+    expect((await call('POST', '/maintenance/plan/copy', admin, { fromVehicleId: v2.id, toVehicleId: v2.id })).statusCode).toBe(400);
+    const plan = (await call('GET', '/maintenance/plan', admin)).json().filter((p: { vehicleId: string }) => p.vehicleId === v2.id);
+    expect(plan[0]).toMatchObject({ lastKm: 220000, lastDate: '2026-08-01', nextKm: 230000 });
+  });
 });

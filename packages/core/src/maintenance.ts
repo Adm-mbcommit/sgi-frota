@@ -1,0 +1,52 @@
+/**
+ * Agenda de manutenção: quando cada revisão deve acontecer (o que vier primeiro:
+ * km, data ou a previsão pelo ritmo de uso) e agrupamento dos itens que vencem juntos
+ * (ex.: troca de óleo + filtro + revisão geral no mesmo km/data).
+ */
+import { addDays } from './dates.js';
+
+export type DueStatus = 'VENCIDO' | 'ATENCAO' | 'CONFIRMAR' | 'SEM_DADO' | 'OK';
+
+/** Campos de um item do plano já calculados (PlanItemStatus do fleet.ts). */
+export interface DueItem {
+  id?: string; plate: string; item: string; status: DueStatus;
+  nextKm: number | null; kmLeft: number | null; dueDate: string | null; daysLeft: number | null; forecastDays: number | null;
+}
+
+export interface DueGroup {
+  plate: string; status: DueStatus; items: string[]; ids: string[];
+  nextKm: number | null; kmLeft: number | null; dueDate: string | null; daysLeft: number | null;
+  /** Data prevista pelo ritmo de uso para chegar ao km. */
+  forecastDate: string | null;
+  /** Data em que a revisão deve ser feita: a mais cedo entre a data limite e a previsão pelo km. */
+  expectedDate: string | null;
+  /** O que define a data esperada. */
+  by: 'km' | 'data' | null;
+}
+
+const RANK: Record<DueStatus, number> = { VENCIDO: 0, ATENCAO: 1, CONFIRMAR: 2, OK: 3, SEM_DADO: 4 };
+
+/** Data esperada da revisão: km já vencido = hoje; senão a mais cedo entre a data limite e a previsão pelo uso. */
+export function expectedDue(it: DueItem, today: string): { forecastDate: string | null; expectedDate: string | null; by: 'km' | 'data' | null } {
+  const forecastDate = it.kmLeft != null && it.kmLeft <= 0 ? today
+    : it.forecastDays != null ? addDays(today, Math.ceil(it.forecastDays)) : null;
+  if (forecastDate && (!it.dueDate || forecastDate <= it.dueDate)) return { forecastDate, expectedDate: forecastDate, by: 'km' };
+  if (it.dueDate) return { forecastDate, expectedDate: it.dueDate, by: 'data' };
+  return { forecastDate: null, expectedDate: null, by: null };
+}
+
+/** Agrupa os itens de mesmo veículo, situação, km e data; ordena do mais urgente ao menos urgente. */
+export function groupDue(items: DueItem[], today: string): DueGroup[] {
+  const map = new Map<string, DueGroup>();
+  for (const it of items) {
+    const key = [it.plate, it.status, it.nextKm, it.dueDate].join('|');
+    const g = map.get(key);
+    if (g) { g.items.push(it.item); if (it.id) g.ids.push(it.id); continue; }
+    map.set(key, {
+      plate: it.plate, status: it.status, items: [it.item], ids: it.id ? [it.id] : [],
+      nextKm: it.nextKm, kmLeft: it.kmLeft, dueDate: it.dueDate, daysLeft: it.daysLeft, ...expectedDue(it, today),
+    });
+  }
+  return [...map.values()].sort((a, b) => RANK[a.status] - RANK[b.status]
+    || (a.expectedDate ?? '9999').localeCompare(b.expectedDate ?? '9999') || (a.kmLeft ?? 1e12) - (b.kmLeft ?? 1e12));
+}

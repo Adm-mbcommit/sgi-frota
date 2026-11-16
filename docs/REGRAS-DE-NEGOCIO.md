@@ -58,6 +58,18 @@ Para cada item do plano: próxima = último km + intervalo km; vencimento = últ
 Registrar um serviço (`POST /maintenance/plan/:id/records`) grava o histórico, atualiza último km/data,
 tira o CONFIRMAR e, se houver valor, lança o custo em Custos.
 
+### Agenda das revisões (alertas)
+
+`@sgi/core` → `maintenance.ts`:
+- **Data esperada** de cada item = a mais cedo entre a data limite (última data + meses) e a data em que o veículo
+  deve chegar ao km da próxima pelo ritmo de uso (`forecastDays`). Km já ultrapassado = hoje.
+- Itens do mesmo veículo com a mesma situação, km e data vencem juntos e aparecem num só alerta (`groupDue`).
+- Itens sem km/data da última vez (SEM DADO) não geram alerta; a tela de Manutenção lista esses itens e permite
+  informar a última revisão de vários de uma vez. Também é possível copiar o plano de outro veículo
+  (`POST /maintenance/plan/copy`).
+- As revisões previstas aparecem no Calendário (🔧; vencidas no dia de hoje) e o Início mostra vencidas, perto de
+  vencer e para conferir.
+
 ## Documentos e CNH
 
 Próximo vencimento = menor data entre CRLV, IPVA, licenciamento e seguro.

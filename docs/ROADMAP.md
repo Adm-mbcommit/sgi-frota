@@ -26,6 +26,7 @@ O sistema passou a se chamar **SGI Matias Brasil**, com um módulo por setor. Fr
   formulário do Comando de Bordo, que chega ao SGI pela sincronização automática.
 
 ## Fase 4 — Gestão
+- [x] Alertas das próximas revisões na tela de Manutenção, no Calendário (🔧) e no Início
 - [ ] Alertas por e-mail/WhatsApp (manutenção, documentos, CNH, excesso de velocidade)
 - [ ] Anexos (NF, CRLV, apólice) em armazenamento de objetos
 - [ ] Relatórios em PDF/Excel por período, veículo e motorista
