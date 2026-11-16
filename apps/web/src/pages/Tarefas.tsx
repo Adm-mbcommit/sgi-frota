@@ -3,12 +3,12 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { parseTaskList } from '@sgi/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import { fd, todayIso } from '../lib/format';
+import { fd, fdi, todayIso } from '../lib/format';
 import { FormDialog, Header, Loading, nn } from '../components/ui';
 import { MiniCalendar } from './Calendario';
 
 export type TaskStatus = 'A_FAZER' | 'EM_ANDAMENTO' | 'AGUARDANDO' | 'FEITA';
-export const TASK_STATUS: [TaskStatus, string][] = [['A_FAZER', 'A fazer'], ['EM_ANDAMENTO', 'Em andamento'], ['AGUARDANDO', 'Aguardando'], ['FEITA', 'Feita']];
+export const TASK_STATUS: [TaskStatus, string][] = [['A_FAZER', '📝 A fazer'], ['EM_ANDAMENTO', '🔄 Em andamento'], ['AGUARDANDO', '⏳ Aguardando'], ['FEITA', '✅ Feita']];
 export interface PersonalTask { id: string; title: string; details: string | null; person: string | null; dueDate: string | null; status: TaskStatus; doneAt: string | null; createdAt: string }
 interface Routine { day: string; items: { id: string; title: string; checked: boolean }[] }
 
@@ -71,19 +71,19 @@ export default function Tarefas() {
           <Loading q={q} />
           {q.data && <>
             {doing.length > 0 && <>
-              <h2>Em andamento <span className="count-pill">{doing.length}</span></h2>
+              <h2>🔄 Em andamento <span className="count-pill">{doing.length}</span></h2>
               <div className="panel tasklist">{doing.map(row)}</div>
             </>}
             {(!terms.length || todo.length > 0) && <>
-              <h2>A fazer <span className="count-pill">{todo.length}</span></h2>
+              <h2>📝 A fazer <span className="count-pill">{todo.length}</span></h2>
               <div className="panel tasklist">{todo.length ? todo.map(row) : <p className="note">Nada pendente. 🎉</p>}</div>
             </>}
             {waiting.length > 0 && <>
-              <h2>Aguardando <span className="count-pill">{waiting.length}</span></h2>
+              <h2>⏳ Aguardando <span className="count-pill">{waiting.length}</span></h2>
               <div className="panel tasklist">{waiting.map(row)}</div>
             </>}
             {done.length > 0 && <details className="done-box" open={terms.length > 0 || undefined}>
-              <summary>Feitas nos últimos 30 dias ({done.length})</summary>
+              <summary>✅ Feitas nos últimos 30 dias ({done.length})</summary>
               <div className="panel tasklist">{done.map(row)}</div>
             </details>}
           </>}
@@ -117,7 +117,8 @@ function TaskRow({ t, onStatus, onEdit }: { t: PersonalTask; onStatus: (s: Perso
       <div className="task-body" onClick={onEdit} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && onEdit()}>
         <span className="task-title">{t.title}</span>
         {t.details && <span className="task-details">↳ {t.details}</span>}
-        {(t.person || due) && <span className="task-meta">
+        {(t.person || due || done) && <span className="task-meta">
+          {done && t.doneAt && <span className="chip ok">✅ Feita em {fdi(t.doneAt)}</span>}
           {t.person && <span className="chip">👤 {t.person}</span>}
           {due && <span className={'chip ' + due.cls}>{due.label}</span>}
         </span>}
@@ -126,7 +127,7 @@ function TaskRow({ t, onStatus, onEdit }: { t: PersonalTask; onStatus: (s: Perso
       {!done && <div className="task-flags" role="group" aria-label="Situação">
         {(['EM_ANDAMENTO', 'AGUARDANDO'] as const).map((v) => (
           <button key={v} type="button" className={'btn sm' + (t.status === v ? ' on' : '')} aria-pressed={t.status === v}
-            onClick={() => onStatus(t.status === v ? 'A_FAZER' : v)}>{v === 'EM_ANDAMENTO' ? 'Em andamento' : 'Aguardando'}</button>
+            onClick={() => onStatus(t.status === v ? 'A_FAZER' : v)}>{v === 'EM_ANDAMENTO' ? '🔄 Em andamento' : '⏳ Aguardando'}</button>
         ))}
       </div>}
     </div>
