@@ -5,16 +5,17 @@
  *   Fazer ordem de compra
  *   Ver com João sobre as mesas @João
  *   ↳ fazer manutenção nos calços          (detalhe da tarefa de cima)
+ *   [em andamento] Cotação de películas
  *   [aguardando] Ver sobre confraternização @Diego
  *   [feita] Mouse pad Diego
  * Marcadores de início ("->", "→", "-", "•", "*", "☐", "1.") são ignorados.
  */
-export type ParsedTaskStatus = 'A_FAZER' | 'AGUARDANDO' | 'FEITA';
+export type ParsedTaskStatus = 'A_FAZER' | 'EM_ANDAMENTO' | 'AGUARDANDO' | 'FEITA';
 export interface ParsedTask { title: string; details: string | null; person: string | null; status: ParsedTaskStatus }
 
 const BULLET = /^(?:-+>|→|=>|[-•*·☐□]|\d+[.)])\s*/;
 const DETAIL = /^(?:↳|↪|└|>)\s*/;
-const STATUS = /^\[(a fazer|aguardando|aguardar|feita|feito|ok)\]\s*/i;
+const STATUS = /^\[(a fazer|em andamento|andamento|aguardando|aguardar|feita|feito|ok)\]\s*/i;
 const PERSON = /\s+@([\p{L}][\p{L}\s.'-]*?)\s*$/u;
 
 export function parseTaskList(text: string): ParsedTask[] {
@@ -34,7 +35,7 @@ export function parseTaskList(text: string): ParsedTask[] {
     const st = line.match(STATUS);
     if (st) {
       const s = st[1].toLowerCase();
-      status = s.startsWith('aguard') ? 'AGUARDANDO' : s === 'a fazer' ? 'A_FAZER' : 'FEITA';
+      status = s.startsWith('aguard') ? 'AGUARDANDO' : s.endsWith('andamento') ? 'EM_ANDAMENTO' : s === 'a fazer' ? 'A_FAZER' : 'FEITA';
       line = line.replace(STATUS, '');
     }
     let person: string | null = null;

@@ -290,7 +290,7 @@ export const imports = pgTable('imports', {
 
 /* ---------- tarefas pessoais (cada usuário vê só as suas) ---------- */
 
-export const personalTaskStatusEnum = pgEnum('personal_task_status', ['A_FAZER', 'AGUARDANDO', 'FEITA']);
+export const personalTaskStatusEnum = pgEnum('personal_task_status', ['A_FAZER', 'EM_ANDAMENTO', 'AGUARDANDO', 'FEITA']);
 
 /** Tarefas do caderno do usuário: título, detalhe, pessoa envolvida e prazo opcionais. */
 export const personalTasks = pgTable('personal_tasks', {

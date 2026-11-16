@@ -1,0 +1,1 @@
+ALTER TYPE "public"."personal_task_status" ADD VALUE 'EM_ANDAMENTO' BEFORE 'AGUARDANDO';

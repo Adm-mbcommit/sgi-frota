@@ -21,6 +21,9 @@ describe('parseTaskList', () => {
       { title: 'Ver com o Kleberson o vencimento dos certificados digitais', details: null, person: 'Kleberson', status: 'A_FAZER' },
     ]);
   });
+  it('reconhece [em andamento] e [andamento]', () => {
+    expect(parseTaskList('[em andamento] Cotação de películas\n[Andamento] Bonificação').map((t) => t.status)).toEqual(['EM_ANDAMENTO', 'EM_ANDAMENTO']);
+  });
   it('e-mail no meio do texto não vira pessoa; detalhe sem tarefa vira tarefa', () => {
     expect(parseTaskList('Enviar para fulano@empresa.com.br hoje')[0].person).toBeNull();
     expect(parseTaskList('↳ solto')).toEqual([{ title: 'solto', details: null, person: null, status: 'A_FAZER' }]);

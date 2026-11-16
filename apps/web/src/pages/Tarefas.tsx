@@ -6,7 +6,9 @@ import { api } from '../lib/api';
 import { fd, todayIso } from '../lib/format';
 import { FormDialog, Header, Loading, nn } from '../components/ui';
 
-export interface PersonalTask { id: string; title: string; details: string | null; person: string | null; dueDate: string | null; status: 'A_FAZER' | 'AGUARDANDO' | 'FEITA'; doneAt: string | null; createdAt: string }
+export type TaskStatus = 'A_FAZER' | 'EM_ANDAMENTO' | 'AGUARDANDO' | 'FEITA';
+export const TASK_STATUS: [TaskStatus, string][] = [['A_FAZER', 'A fazer'], ['EM_ANDAMENTO', 'Em andamento'], ['AGUARDANDO', 'Aguardando'], ['FEITA', 'Feita']];
+export interface PersonalTask { id: string; title: string; details: string | null; person: string | null; dueDate: string | null; status: TaskStatus; doneAt: string | null; createdAt: string }
 interface Routine { day: string; items: { id: string; title: string; checked: boolean }[] }
 
 export const useMyTasks = () => useQuery({ queryKey: ['my-tasks'], queryFn: () => api<PersonalTask[]>('/my/tasks') });
@@ -39,6 +41,7 @@ export default function Tarefas() {
     try { await api(`/my/tasks/${t.id}`, { method: 'PATCH', json: { status } }); } finally { await refresh(); }
   };
   const all = q.data ?? [];
+  const doing = all.filter((t) => t.status === 'EM_ANDAMENTO');
   const todo = all.filter((t) => t.status === 'A_FAZER');
   const waiting = all.filter((t) => t.status === 'AGUARDANDO');
   const done = all.filter((t) => t.status === 'FEITA').sort((a, b) => (b.doneAt ?? '').localeCompare(a.doneAt ?? ''));
@@ -57,6 +60,10 @@ export default function Tarefas() {
           {err && <div className="err">{err}</div>}
           <Loading q={q} />
           {q.data && <>
+            {doing.length > 0 && <>
+              <h2>Em andamento <span className="count-pill">{doing.length}</span></h2>
+              <div className="panel tasklist">{doing.map(row)}</div>
+            </>}
             <h2>A fazer <span className="count-pill">{todo.length}</span></h2>
             <div className="panel tasklist">{todo.length ? todo.map(row) : <p className="note">Nada pendente. 🎉</p>}</div>
             {waiting.length > 0 && <>
@@ -79,7 +86,7 @@ export default function Tarefas() {
           { name: 'details', label: 'Detalhe (opcional)', value: edit.details },
           { name: 'person', label: 'Com quem (opcional)', value: edit.person },
           { name: 'dueDate', label: 'Prazo (opcional)', type: 'date', value: edit.dueDate },
-          { name: 'status', label: 'Situação', type: 'select', value: edit.status, options: [['A_FAZER', 'A fazer'], ['AGUARDANDO', 'Aguardando'], ['FEITA', 'Feita']] },
+          { name: 'status', label: 'Situação', type: 'select', value: edit.status, options: TASK_STATUS },
         ]}
         onSave={async (o) => {
           await api(`/my/tasks/${edit.id}`, { method: 'PATCH', json: { title: o.title, details: nn(o.details), person: nn(o.person), dueDate: nn(o.dueDate), status: o.status } });
@@ -103,7 +110,9 @@ function TaskRow({ t, onStatus, onEdit }: { t: PersonalTask; onStatus: (s: Perso
           {due && <span className={'chip ' + due.cls}>{due.label}</span>}
         </span>}
       </div>
-      {!done && <button className="btn sm" onClick={() => onStatus(t.status === 'AGUARDANDO' ? 'A_FAZER' : 'AGUARDANDO')}>{t.status === 'AGUARDANDO' ? 'Retomar' : 'Aguardar'}</button>}
+      {!done && <select className="task-status" value={t.status} onChange={(e) => onStatus(e.target.value as TaskStatus)} aria-label="Situação">
+        {TASK_STATUS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+      </select>}
     </div>
   );
 }
@@ -154,7 +163,7 @@ function PasteDialog({ initial, onClose, onDone }: { initial: string; onClose: (
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
   useEffect(() => { ref.current?.showModal(); }, []);
   const tasks = parseTaskList(text);
-  const label = { A_FAZER: 'A fazer', AGUARDANDO: 'Aguardando', FEITA: 'Feita' } as const;
+  const label = Object.fromEntries(TASK_STATUS) as Record<TaskStatus, string>;
   const save = async () => {
     setBusy(true); setErr('');
     try { await api('/my/tasks/bulk', { method: 'POST', json: { tasks } }); await onDone(); onClose(); }
@@ -163,9 +172,9 @@ function PasteDialog({ initial, onClose, onDone }: { initial: string; onClose: (
   return (
     <dialog ref={ref} onClose={onClose} className="paste-dialog">
       <h3>Colar lista de tarefas</h3>
-      <p className="note" style={{ marginTop: 0 }}>Uma tarefa por linha. Linha começando com <b>↳</b> vira detalhe da tarefa de cima; <b>@Nome</b> no fim diz com quem; <b>[aguardando]</b> ou <b>[feita]</b> no começo muda a situação.</p>
+      <p className="note" style={{ marginTop: 0 }}>Uma tarefa por linha. Linha começando com <b>↳</b> vira detalhe da tarefa de cima; <b>@Nome</b> no fim diz com quem; <b>[em andamento]</b>, <b>[aguardando]</b> ou <b>[feita]</b> no começo muda a situação.</p>
       <textarea value={text} onChange={(e) => setText(e.target.value)} rows={8} autoFocus aria-label="Lista de tarefas"
-        placeholder={'Fazer ordem de compra\nVer com João sobre as mesas @João\n↳ manutenção nos calços\n[aguardando] Confraternização de final de ano @Diego'} />
+        placeholder={'Fazer ordem de compra\nVer com João sobre as mesas @João\n↳ manutenção nos calços\n[em andamento] Cotação de películas\n[aguardando] Confraternização de final de ano @Diego'} />
       {tasks.length > 0 && <div className="paste-preview">
         <b>{tasks.length} tarefa{tasks.length > 1 ? 's' : ''}:</b>
         <ul>{tasks.map((t, i) => <li key={i}>{t.title}{t.details && <span className="task-details"> ↳ {t.details}</span>}

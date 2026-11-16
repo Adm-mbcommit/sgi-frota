@@ -196,10 +196,11 @@ d('API', () => {
       { title: 'Ver com João sobre as mesas', details: 'calços', person: 'João' },
       { title: 'Confraternização', person: 'Diego', status: 'AGUARDANDO' },
       { title: 'Mouse pad', status: 'FEITA' },
+      { title: 'Películas', status: 'EM_ANDAMENTO' },
     ] });
-    expect(bulk.json()).toEqual({ created: 3 });
+    expect(bulk.json()).toEqual({ created: 4 });
     const mineNow = (await call('GET', '/my/tasks', admin)).json();
-    expect(mineNow.map((t: { status: string }) => t.status).sort()).toEqual(['AGUARDANDO', 'A_FAZER', 'FEITA']);
+    expect(mineNow.map((t: { status: string }) => t.status).sort()).toEqual(['AGUARDANDO', 'A_FAZER', 'EM_ANDAMENTO', 'FEITA']);
     expect(mineNow.find((t: { status: string }) => t.status === 'FEITA').doneAt).toBeTruthy();
     expect((await call('GET', '/my/tasks', reader)).json()).toHaveLength(0);
     expect((await call('POST', '/my/tasks/bulk', admin, { tasks: [] })).statusCode).toBe(400);
