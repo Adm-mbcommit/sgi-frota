@@ -6,6 +6,7 @@ import type { Dashboard } from '../lib/types';
 import { usePeriod } from '../lib/period';
 import { MODULES, SYSTEM_NAV, type NavItem } from '../modules';
 import { dueInfo, useMyTasks } from '../pages/Tarefas';
+import { upcoming, useBirthdays } from '../pages/Calendario';
 
 const ROLE: Record<string, string> = { ADMIN: 'Administrador', GESTOR: 'Gestor', MOTORISTA: 'Motorista', LEITOR: 'Leitura' };
 
@@ -16,6 +17,8 @@ export default function Layout() {
   const current = MODULES.find((m) => pathname === m.path || pathname.startsWith(m.path + '/'));
   const dash = useQuery({ queryKey: ['dashboard', qs], queryFn: () => api<Dashboard>('/dashboard?' + qs) });
   const tasks = useMyTasks();
+  const bdays = useBirthdays();
+  const bdayToday = upcoming(bdays.data ?? [], 0).some((e) => e.kind === 'birthday');
   const myLate = (tasks.data ?? []).filter((t) => dueInfo(t)?.cls === 'bad' || dueInfo(t)?.cls === 'warn').length;
   const badge: Record<string, number> = { alerts: dash.data?.kpis.maintenanceAlerts ?? 0, tasks: dash.data?.openTasks.length ?? 0 };
   const visible = (it: NavItem) => typeof it === 'string' || ((!it.roles || can(...it.roles)) && !(it.hide && can(...it.hide)));
@@ -36,6 +39,7 @@ export default function Layout() {
         <div className="brand"><div className="logo"><img src="/logo.png" alt="Matias Brasil Engenharia" /></div><b>SGI Matias Brasil</b><span>Sistema de Gestão Interno</span></div>
         <NavLink to="/" end className={({ isActive }) => 'top-link' + (isActive ? ' act' : '')}>Início</NavLink>
         <NavLink to="/tarefas" className={({ isActive }) => 'top-link' + (isActive ? ' act' : '')}>Minhas tarefas{myLate ? <i title="Atrasadas ou para hoje">{myLate}</i> : null}</NavLink>
+        <NavLink to="/calendario" className={({ isActive }) => 'top-link' + (isActive ? ' act' : '')}>Calendário{bdayToday ? <i title="Aniversário hoje" className="cake">🎂</i> : null}</NavLink>
         <div className="grp">Setores</div>
         {MODULES.map((m) => {
           const open = current?.id === m.id && !m.soon;

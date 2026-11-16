@@ -22,6 +22,13 @@
       "when": 1794852961093,
       "tag": "0002_tarefa_em_andamento",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794857486070,
+      "tag": "0003_aniversarios",
+      "breakpoints": true
     }
   ]
 }
