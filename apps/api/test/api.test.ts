@@ -165,4 +165,31 @@ d('API', () => {
     const [a] = await db.select().from(s.auditLog).where(sql`${s.auditLog.action} = 'change_password'`);
     expect(JSON.stringify(a)).not.toContain('outra-senha-forte');
   });
+  it('tarefas pessoais e rotina: cada usuário vê só as suas', async () => {
+    const t = await call('POST', '/my/tasks', admin, { title: 'Fazer ordem de compra', person: 'Diego', dueDate: '2026-11-20' });
+    expect(t.statusCode).toBe(201);
+    const id = t.json().id;
+    expect((await call('POST', '/my/tasks', admin, { title: '   ' })).statusCode).toBe(400);
+    expect((await call('GET', '/my/tasks', admin)).json()).toHaveLength(1);
+    // outro usuário não vê nem altera
+    expect((await call('GET', '/my/tasks', reader)).json()).toHaveLength(0);
+    expect((await call('PATCH', `/my/tasks/${id}`, reader, { status: 'FEITA' })).statusCode).toBe(404);
+    expect((await call('DELETE', `/my/tasks/${id}`, reader)).statusCode).toBe(404);
+    const w = (await call('PATCH', `/my/tasks/${id}`, admin, { status: 'AGUARDANDO', details: 'entrada protocolo' })).json();
+    expect(w).toMatchObject({ status: 'AGUARDANDO', details: 'entrada protocolo', doneAt: null });
+    expect((await call('PATCH', `/my/tasks/${id}`, admin, { status: 'FEITA' })).json().doneAt).toBeTruthy();
+
+    const r = (await call('POST', '/my/routine', admin, { title: 'Conferir prazos' })).json();
+    let rot = (await call('GET', '/my/routine', admin)).json();
+    expect(rot.items).toEqual([{ id: r.id, title: 'Conferir prazos', checked: false }]);
+    expect((await call('PUT', `/my/routine/${r.id}/check`, reader, { checked: true })).statusCode).toBe(404);
+    await call('PUT', `/my/routine/${r.id}/check`, admin, { checked: true });
+    await call('PUT', `/my/routine/${r.id}/check`, admin, { checked: true }); // repetir não duplica
+    rot = (await call('GET', '/my/routine', admin)).json();
+    expect(rot.items[0].checked).toBe(true);
+    expect((await call('GET', '/my/routine', reader)).json().items).toHaveLength(0);
+    expect((await call('DELETE', `/my/routine/${r.id}`, admin)).statusCode).toBe(204);
+    expect((await call('GET', '/my/routine', admin)).json().items).toHaveLength(0);
+    expect((await call('DELETE', `/my/tasks/${id}`, admin)).statusCode).toBe(204);
+  });
 });

@@ -36,3 +36,17 @@ Datas de calendário em `AAAA-MM-DD`; instantes em ISO 8601. Listas aceitam `?fr
 | GET | /health (sem prefixo) | — | Saúde da API e do banco |
 
 Erros: `{ error, message }` com 400 (validação, com `issues`), 401, 403, 404, 409 (duplicado) ou 500.
+
+## Minhas tarefas (cada usuário vê só as suas)
+
+| Método | Rota | Perfil | Observação |
+|---|---|---|---|
+| GET | /my/tasks | todos | Abertas + feitas nos últimos 30 dias |
+| POST | /my/tasks | todos | `{title, details?, person?, dueDate?}` |
+| PATCH | /my/tasks/:id | todos | `{title?, details?, person?, dueDate?, status?}` (`A_FAZER`, `AGUARDANDO`, `FEITA`) |
+| DELETE | /my/tasks/:id | todos | |
+| GET | /my/routine | todos | Itens da rotina com `checked` do dia de hoje (America/Sao_Paulo) |
+| POST | /my/routine | todos | `{title}` |
+| DELETE | /my/routine/:id | todos | Desativa o item (marcações antigas ficam) |
+| PUT | /my/routine/:id/check | todos | `{checked}` para hoje |
+

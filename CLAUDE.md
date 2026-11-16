@@ -17,7 +17,7 @@ Interface, mensagens, documentação e commits em **português**; identificadore
   `src/vercel.ts` adapta a API para Função Serverless; `api/index.mjs` (raiz) aponta para o build.
 - `apps/web` — React 18 + Vite + TanStack Query. Telas em `src/pages/`, componentes em `src/components/ui.tsx`.
   Módulos (setores) e seus menus em `src/modules.ts`; rotas de cada módulo em `/<módulo>/...` (`main.tsx`).
-  Usuários e Minha conta são do sistema (fora dos módulos).
+  Usuários, Minha conta e Minhas tarefas (`pages/Tarefas.tsx`, pessoal de cada usuário) ficam fora dos módulos.
   O visual (tokens CSS, tema claro/escuro) veio do artefato: `src/styles.css`.
 - `docs/` — ARQUITETURA, REGRAS-DE-NEGOCIO (parâmetros e paridade), DEPLOY, API, ROADMAP. Atualize junto com o código.
 - `infra/` — alternativa Docker + Caddy (não usada em produção).
@@ -54,6 +54,7 @@ Neste ambiente de nuvem há PostgreSQL 16 local, mas ele pode parar entre comand
 - **Cuidado:** se `SEED_ADMIN_PASSWORD` estiver definida, *todo* deploy redefine a senha do administrador para esse valor.
   Ela deve ficar **removida**; só use temporariamente para recuperar acesso, e apague depois.
 - Mudanças grandes: branch + pull request, para o usuário testar no link de preview antes.
+- Previews não aplicam migrações: telas que dependem de tabela nova só funcionam depois de publicar.
 - Esta sessão não acessa `*.vercel.app`; para verificar um deploy use a API da Vercel (estado e logs) e peça print ao usuário.
 
 ## Perfis
