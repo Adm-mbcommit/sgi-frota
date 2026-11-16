@@ -60,4 +60,6 @@ Feriados nacionais são calculados no front (`nationalHolidays` do `@sgi/core`, 
 | GET | /birthdays | todos | `{id, name, day, month}`; `year` só para ADMIN/GESTOR |
 | POST / PATCH /:id / DELETE /:id | /birthdays | ADMIN, GESTOR | `{name, day, month, year?}`; nome único por empresa |
 | POST | /birthdays/import | ADMIN, GESTOR | .xlsx com nome e data em qualquer coluna; atualiza quem já existe |
+| GET | /appointments?from&to | todos | Compromissos do usuário + os da equipe (`shared`); `{id, date, time, title, notes, shared, mine, owner}` |
+| POST / PATCH /:id / DELETE /:id | /appointments | todos | `{date, time?, title, notes?, shared?}`; só quem criou altera ou exclui |
 

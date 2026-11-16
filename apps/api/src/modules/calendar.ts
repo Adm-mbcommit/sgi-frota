@@ -1,14 +1,14 @@
 /**
- * Calendário: aniversários da equipe (os feriados nacionais são calculados no
+ * Calendário: compromissos (pessoais ou da equipe) e aniversários da equipe (os feriados nacionais são calculados no
  * front com nationalHolidays do @sgi/core). Todos consultam; ADMIN e GESTOR alteram.
  * O ano de nascimento só é devolvido para quem pode editar.
  */
 import type { FastifyInstance } from 'fastify';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, gte, lte, or } from 'drizzle-orm';
 import { z } from 'zod';
 import { parseBirthday } from '@sgi/core';
-import { birthdays } from '../db/schema.js';
-import { HttpError, notFound, parse, uuid } from '../plugins/http.js';
+import { appointments, birthdays, users } from '../db/schema.js';
+import { HttpError, isoDate, notFound, parse, uuid } from '../plugins/http.js';
 import { WRITE_ROLES } from '../plugins/auth.js';
 import { cellValue, readWorkbook } from '../importers/xlsx.js';
 import { audit } from '../services/audit.js';
@@ -89,5 +89,51 @@ export default async function calendarRoutes(app: FastifyInstance) {
     }
     await audit(db, req, 'import', 'birthday', null, { file: file.filename, created, updated });
     return { created, updated };
+  });
+
+  /* ---- compromissos: pessoais, ou da equipe quando shared ---- */
+  const apptBody = z.object({
+    date: isoDate,
+    time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use HH:MM').nullable().optional(),
+    title: z.string().trim().min(1, 'Escreva o compromisso.').max(200),
+    notes: z.string().trim().max(2000).nullable().optional().transform((v) => v || null),
+    shared: z.boolean().optional(),
+  });
+  const myAppt = (id: string, req: { user: { org: string; sub: string } }) =>
+    and(eq(appointments.id, id), eq(appointments.organizationId, req.user.org), eq(appointments.userId, req.user.sub));
+
+  app.get('/appointments', read, async (req) => {
+    const q = parse(z.object({ from: isoDate, to: isoDate }), req.query);
+    const rows = await db.select({ a: appointments, owner: users.name }).from(appointments)
+      .innerJoin(users, eq(users.id, appointments.userId))
+      .where(and(eq(appointments.organizationId, req.user.org), gte(appointments.date, q.from), lte(appointments.date, q.to),
+        or(eq(appointments.userId, req.user.sub), eq(appointments.shared, true))))
+      .orderBy(asc(appointments.date), asc(appointments.time));
+    return rows.map(({ a, owner }) => ({ id: a.id, date: a.date, time: a.time, title: a.title, notes: a.notes, shared: a.shared, mine: a.userId === req.user.sub, owner }));
+  });
+
+  app.post('/appointments', read, async (req, reply) => {
+    const b = parse(apptBody, req.body);
+    const [a] = await db.insert(appointments).values({ ...b, time: b.time ?? null, shared: b.shared ?? false, organizationId: req.user.org, userId: req.user.sub }).returning();
+    await audit(db, req, 'create', 'appointment', a.id, { date: a.date, shared: a.shared });
+    return reply.code(201).send(a);
+  });
+
+  // só quem criou altera ou exclui
+  app.patch('/appointments/:id', read, async (req) => {
+    const { id } = parse(idParam, req.params);
+    const b = parse(apptBody, req.body);
+    const [a] = await db.update(appointments).set({ ...b, time: b.time ?? null, shared: b.shared ?? false }).where(myAppt(id, req)).returning();
+    if (!a) throw notFound('Compromisso');
+    await audit(db, req, 'update', 'appointment', id, { date: a.date, shared: a.shared });
+    return a;
+  });
+
+  app.delete('/appointments/:id', read, async (req, reply) => {
+    const { id } = parse(idParam, req.params);
+    const [a] = await db.delete(appointments).where(myAppt(id, req)).returning({ id: appointments.id });
+    if (!a) throw notFound('Compromisso');
+    await audit(db, req, 'delete', 'appointment', id);
+    return reply.code(204).send();
   });
 }

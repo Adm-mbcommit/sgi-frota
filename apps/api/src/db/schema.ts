@@ -341,3 +341,18 @@ export const birthdays = pgTable('birthdays', {
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 }, (t) => [uniqueIndex('birthdays_org_name_uq').on(t.organizationId, sql`lower(${t.name})`)]);
+
+/** Compromissos marcados no calendário. Pessoais, a menos que `shared` (aí toda a equipe vê). */
+export const appointments = pgTable('appointments', {
+  id: id(),
+  organizationId: org(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  date: date('date').notNull(),
+  /** Hora "HH:MM" (horário de Brasília), opcional. */
+  time: text('time'),
+  title: text('title').notNull(),
+  notes: text('notes'),
+  shared: boolean('shared').notNull().default(false),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+}, (t) => [index('appointments_org_date_idx').on(t.organizationId, t.date)]);

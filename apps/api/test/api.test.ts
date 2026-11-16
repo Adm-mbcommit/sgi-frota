@@ -233,4 +233,19 @@ d('API', () => {
     expect((await call('DELETE', `/birthdays/${n.json().id}`, reader)).statusCode).toBe(403);
     expect((await call('DELETE', `/birthdays/${n.json().id}`, admin)).statusCode).toBe(204);
   });
+  it('compromissos: pessoais por padrão, da equipe quando marcados; só o dono altera', async () => {
+    const mineA = await call('POST', '/appointments', admin, { date: '2026-11-20', time: '09:30', title: 'Reunião com o Diego' });
+    expect(mineA.statusCode).toBe(201);
+    const team = await call('POST', '/appointments', admin, { date: '2026-11-21', title: 'Confraternização', shared: true });
+    expect((await call('POST', '/appointments', admin, { date: '2026-11-20', time: '25:00', title: 'x' })).statusCode).toBe(400);
+    const range = '?from=2026-11-01&to=2026-11-30';
+    expect((await call('GET', '/appointments' + range, admin)).json().map((a: { title: string }) => a.title)).toEqual(['Reunião com o Diego', 'Confraternização']);
+    const seen = (await call('GET', '/appointments' + range, reader)).json();
+    expect(seen).toEqual([expect.objectContaining({ title: 'Confraternização', mine: false, owner: 'Admin' })]);
+    expect((await call('PATCH', `/appointments/${team.json().id}`, reader, { date: '2026-11-21', title: 'hack' })).statusCode).toBe(404);
+    expect((await call('DELETE', `/appointments/${mineA.json().id}`, reader)).statusCode).toBe(404);
+    expect((await call('PATCH', `/appointments/${mineA.json().id}`, admin, { date: '2026-11-20', time: '10:00', title: 'Reunião', notes: 'sala 2' })).json()).toMatchObject({ time: '10:00', notes: 'sala 2', shared: false });
+    expect((await call('GET', '/appointments?from=2026-12-01&to=2026-12-31', admin)).json()).toHaveLength(0);
+    expect((await call('DELETE', `/appointments/${mineA.json().id}`, admin)).statusCode).toBe(204);
+  });
 });
