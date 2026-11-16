@@ -41,6 +41,18 @@ export default async function myTaskRoutes(app: FastifyInstance) {
     return reply.code(201).send(t);
   });
 
+  /** Várias tarefas de uma vez (lista colada, já lida no navegador por parseTaskList). */
+  app.post('/my/tasks/bulk', auth, async (req, reply) => {
+    const item = z.object({ title: text(300).min(1), details: optText(2000), person: optText(80), status: status.default('A_FAZER') });
+    const b = parse(z.object({ tasks: z.array(item).min(1).max(200) }), req.body);
+    const now = new Date();
+    const rows = await db.insert(personalTasks).values(b.tasks.map((t) => ({
+      ...t, organizationId: req.user.org, userId: req.user.sub, doneAt: t.status === 'FEITA' ? now : null,
+    }))).returning({ id: personalTasks.id });
+    await audit(db, req, 'create_bulk', 'personal_task', null, { count: rows.length });
+    return reply.code(201).send({ created: rows.length });
+  });
+
   app.patch('/my/tasks/:id', auth, async (req) => {
     const { id } = parse(idParam, req.params);
     const b = parse(z.object({ title: text(300).min(1), details: optText(2000), person: optText(80), dueDate: isoDate.nullable(), status }).partial(), req.body);

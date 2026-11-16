@@ -7,3 +7,4 @@ export * from './fuel.js';
 export * from './fleet.js';
 export * from './analyze.js';
 export * from './legacy.js';
+export * from './tasks.js';

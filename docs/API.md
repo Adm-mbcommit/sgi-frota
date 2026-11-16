@@ -43,6 +43,7 @@ Erros: `{ error, message }` com 400 (validação, com `issues`), 401, 403, 404, 
 |---|---|---|---|
 | GET | /my/tasks | todos | Abertas + feitas nos últimos 30 dias |
 | POST | /my/tasks | todos | `{title, details?, person?, dueDate?}` |
+| POST | /my/tasks/bulk | todos | `{tasks: [{title, details?, person?, status?}]}` (até 200; lista colada, lida por `parseTaskList` do core) |
 | PATCH | /my/tasks/:id | todos | `{title?, details?, person?, dueDate?, status?}` (`A_FAZER`, `AGUARDANDO`, `FEITA`) |
 | DELETE | /my/tasks/:id | todos | |
 | GET | /my/routine | todos | Itens da rotina com `checked` do dia de hoje (America/Sao_Paulo) |

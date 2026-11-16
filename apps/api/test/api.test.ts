@@ -191,5 +191,17 @@ d('API', () => {
     expect((await call('DELETE', `/my/routine/${r.id}`, admin)).statusCode).toBe(204);
     expect((await call('GET', '/my/routine', admin)).json().items).toHaveLength(0);
     expect((await call('DELETE', `/my/tasks/${id}`, admin)).statusCode).toBe(204);
+
+    const bulk = await call('POST', '/my/tasks/bulk', admin, { tasks: [
+      { title: 'Ver com João sobre as mesas', details: 'calços', person: 'João' },
+      { title: 'Confraternização', person: 'Diego', status: 'AGUARDANDO' },
+      { title: 'Mouse pad', status: 'FEITA' },
+    ] });
+    expect(bulk.json()).toEqual({ created: 3 });
+    const mineNow = (await call('GET', '/my/tasks', admin)).json();
+    expect(mineNow.map((t: { status: string }) => t.status).sort()).toEqual(['AGUARDANDO', 'A_FAZER', 'FEITA']);
+    expect(mineNow.find((t: { status: string }) => t.status === 'FEITA').doneAt).toBeTruthy();
+    expect((await call('GET', '/my/tasks', reader)).json()).toHaveLength(0);
+    expect((await call('POST', '/my/tasks/bulk', admin, { tasks: [] })).statusCode).toBe(400);
   });
 });
