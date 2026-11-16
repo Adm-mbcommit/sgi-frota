@@ -16,7 +16,12 @@ const WEEK = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const pad = (n: number) => String(n).padStart(2, '0');
 const weekday = (date: string) => new Date(date + 'T12:00:00Z').getUTCDay();
 const dm = (date: string) => `${date.slice(8, 10)}/${date.slice(5, 7)}`;
-const firstNames = (name: string) => name.split(' ').slice(0, 2).join(' ');
+/** Nome curto: primeiro nome + o seguinte (pulando "de", "da", "dos"…), ex.: "Kleberson Oliveira". */
+const firstNames = (name: string) => {
+  const w = name.trim().split(/\s+/);
+  const rest = w.slice(1).find((x) => !/^(d[aeo]s?|e)$/i.test(x));
+  return rest ? `${w[0]} ${rest}` : w[0];
+};
 
 export interface CalEvent { date: string; kind: 'holiday' | 'optional' | 'birthday'; label: string }
 
@@ -158,6 +163,54 @@ export function CalendarSummary() {
       {week.length > 0 && <span>🎂 <b>Aniversários:</b> {week.map((e) => `${firstNames(e.label)} (${whenLabel(e.date, today).toLowerCase()})`).join(' · ')}</span>}
       {hol && <span>📅 <b>Próximo feriado:</b> {hol.label} – {whenLabel(hol.date, today).toLowerCase()}</span>}
       <Link className="btn sm" to="/calendario">Ver calendário</Link>
+    </div>
+  );
+}
+
+/** Calendário pequeno do mês + próximos aniversários (usado ao lado das tarefas). */
+export function MiniCalendar() {
+  const today = todayIso();
+  const [ym, setYm] = useState({ y: +today.slice(0, 4), m: +today.slice(5, 7) });
+  const q = useBirthdays();
+  const bdays = q.data ?? [];
+  const first = `${ym.y}-${pad(ym.m)}-01`;
+  const last = `${ym.y}-${pad(ym.m)}-${pad(new Date(Date.UTC(ym.y, ym.m, 0)).getUTCDate())}`;
+  const byDay = new Map<string, CalEvent[]>();
+  eventsBetween(first, last, bdays).forEach((e) => byDay.set(e.date, [...(byDay.get(e.date) ?? []), e]));
+  const cells: (string | null)[] = [...Array(weekday(first)).fill(null)];
+  for (let d = 1; d <= +last.slice(8); d++) cells.push(`${ym.y}-${pad(ym.m)}-${pad(d)}`);
+  const move = (n: number) => setYm(({ y, m }) => { const t = (y * 12 + m - 1) + n; return { y: Math.floor(t / 12), m: (t % 12) + 1 }; });
+  const next = upcoming(bdays, 366, today);
+  const nextBdays = next.filter((e) => e.kind === 'birthday').slice(0, 5);
+  const nextHol = next.find((e) => e.kind !== 'birthday');
+  const month = MONTHS[ym.m - 1];
+  return (
+    <div className="mini-cal-box">
+      <h2>Calendário</h2>
+      <div className="panel">
+        <div className="mini-nav">
+          <button className="btn sm" onClick={() => move(-1)} aria-label="Mês anterior">◀</button>
+          <b>{month[0].toUpperCase() + month.slice(1)} {ym.y}</b>
+          <button className="btn sm" onClick={() => move(1)} aria-label="Próximo mês">▶</button>
+        </div>
+        <div className="mini-cal">
+          {WEEK.map((w) => <span key={w} className="mini-wd">{w[0]}</span>)}
+          {cells.map((d, i) => {
+            const ev = d ? byDay.get(d) ?? [] : [];
+            const cls = ev.some((e) => e.kind === 'holiday') ? ' hol' : ev.some((e) => e.kind === 'optional') ? ' opt' : '';
+            return <span key={i} className={'mini-day' + cls + (d === today ? ' today' : '') + (ev.some((e) => e.kind === 'birthday') ? ' bday' : '')}
+              title={ev.map((e) => (e.kind === 'birthday' ? '🎂 ' : '') + e.label).join('\n') || undefined}>{d ? +d.slice(8) : ''}</span>;
+          })}
+        </div>
+        <p className="note mini-key"><span className="cal-key holiday" /> feriado · <span className="cal-key optional" /> facultativo · <span className="mini-dot" /> aniversário</p>
+        <h3 className="mini-h">Próximos aniversários</h3>
+        {nextBdays.length ? nextBdays.map((e, i) => (
+          <div key={i} className="cal-next"><span className={'cal-when' + (e.date === today ? ' now' : '')}>{whenLabel(e.date, today)}</span><span>🎂 {firstNames(e.label)}</span></div>
+        )) : <p className="note">{q.isLoading ? 'Carregando…' : 'Nenhum aniversário cadastrado.'}</p>}
+        {nextHol && <h3 className="mini-h">Próximo feriado</h3>}
+        {nextHol && <div className="cal-next"><span className={'cal-when' + (nextHol.date === today ? ' now' : '')}>{whenLabel(nextHol.date, today)}</span><span>📅 {nextHol.label}</span></div>}
+        <Link className="btn sm" to="/calendario" style={{ marginTop: 10 }}>Abrir calendário</Link>
+      </div>
     </div>
   );
 }
