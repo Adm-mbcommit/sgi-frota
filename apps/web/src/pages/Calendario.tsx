@@ -1,5 +1,5 @@
-/** Calendário: feriados nacionais (calculados) e aniversários da equipe. */
-import { useMemo, useRef, useState } from 'react';
+/** Calendário: feriados nacionais (calculados), aniversários da equipe e compromissos. */
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { daysBetween, nationalHolidays, nextBirthday, type Holiday } from '@sgi/core';
@@ -10,6 +10,12 @@ import { FormDialog, Header, Loading, num } from '../components/ui';
 
 export interface Birthday { id: string; name: string; day: number; month: number; year?: number | null }
 export const useBirthdays = () => useQuery({ queryKey: ['birthdays'], queryFn: () => api<Birthday[]>('/birthdays'), staleTime: 10 * 60_000 });
+
+export interface Appointment { id: string; date: string; time: string | null; title: string; notes: string | null; shared: boolean; mine: boolean; owner: string }
+export const useAppointments = (from: string, to: string) =>
+  useQuery({ queryKey: ['appointments', from, to], queryFn: () => api<Appointment[]>(`/appointments?from=${from}&to=${to}`) });
+const plusDays = (date: string, n: number) => { const t = new Date(date + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
+const apptLabel = (a: Appointment) => (a.time ? a.time + ' ' : '') + a.title;
 
 const MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const WEEK = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -23,22 +29,23 @@ const firstNames = (name: string) => {
   return rest ? `${w[0]} ${rest}` : w[0];
 };
 
-export interface CalEvent { date: string; kind: 'holiday' | 'optional' | 'birthday'; label: string }
+export interface CalEvent { date: string; kind: 'holiday' | 'optional' | 'birthday' | 'appointment'; label: string; appt?: Appointment }
 
-/** Feriados e aniversários entre duas datas (inclusive). */
-function eventsBetween(from: string, to: string, bdays: Birthday[]): CalEvent[] {
+/** Feriados, aniversários e compromissos entre duas datas (inclusive). */
+function eventsBetween(from: string, to: string, bdays: Birthday[], appts: Appointment[] = []): CalEvent[] {
   const years = [+from.slice(0, 4), +to.slice(0, 4)].filter((y, i, a) => a.indexOf(y) === i);
   const hol = years.flatMap((y) => nationalHolidays(y)).filter((h: Holiday) => h.date >= from && h.date <= to)
     .map((h): CalEvent => ({ date: h.date, kind: h.optional ? 'optional' : 'holiday', label: h.name + (h.optional ? ' (ponto facultativo)' : '') }));
   const bd = bdays.flatMap((b) => years.map((y) => nextBirthday(b, `${y}-01-01`)).filter((d) => d >= from && d <= to)
     .map((d): CalEvent => ({ date: d, kind: 'birthday', label: b.name })));
-  return [...hol, ...bd].sort((a, b) => a.date.localeCompare(b.date) || a.kind.localeCompare(b.kind));
+  const ap = appts.filter((a) => a.date >= from && a.date <= to).map((a): CalEvent => ({ date: a.date, kind: 'appointment', label: apptLabel(a), appt: a }));
+  const order = { holiday: 0, optional: 1, appointment: 2, birthday: 3 };
+  return [...hol, ...ap, ...bd].sort((a, b) => a.date.localeCompare(b.date) || order[a.kind] - order[b.kind] || (a.appt?.time ?? '').localeCompare(b.appt?.time ?? ''));
 }
 
 /** Próximos eventos a partir de hoje (para o Início e a lista ao lado do calendário). */
-export function upcoming(bdays: Birthday[], days: number, today = todayIso()) {
-  const end = new Date(today + 'T12:00:00Z'); end.setUTCDate(end.getUTCDate() + days);
-  return eventsBetween(today, end.toISOString().slice(0, 10), bdays);
+export function upcoming(bdays: Birthday[], days: number, today = todayIso(), appts: Appointment[] = []) {
+  return eventsBetween(today, plusDays(today, days), bdays, appts);
 }
 
 const whenLabel = (date: string, today: string) => {
@@ -54,17 +61,20 @@ export default function Calendario() {
   const bdays = q.data ?? [];
   const first = `${ym.y}-${pad(ym.m)}-01`;
   const last = `${ym.y}-${pad(ym.m)}-${pad(new Date(Date.UTC(ym.y, ym.m, 0)).getUTCDate())}`;
-  const events = useMemo(() => eventsBetween(first, last, bdays), [first, last, bdays]);
+  const [day, setDay] = useState<string | null>(null);
+  const aq = useAppointments(first < today ? first : today, last > plusDays(today, 60) ? last : plusDays(today, 60));
+  const appts = aq.data ?? [];
+  const events = useMemo(() => eventsBetween(first, last, bdays, appts), [first, last, bdays, appts]);
   const byDay = new Map<string, CalEvent[]>();
   events.forEach((e) => byDay.set(e.date, [...(byDay.get(e.date) ?? []), e]));
   const cells: (string | null)[] = [...Array(weekday(first)).fill(null)];
   for (let d = 1; d <= +last.slice(8); d++) cells.push(`${ym.y}-${pad(ym.m)}-${pad(d)}`);
   while (cells.length % 7) cells.push(null);
   const move = (n: number) => setYm(({ y, m }) => { const t = (y * 12 + m - 1) + n; return { y: Math.floor(t / 12), m: (t % 12) + 1 }; });
-  const next = upcoming(bdays, 60, today);
+  const next = upcoming(bdays, 60, today, appts);
   return (
     <>
-      <Header title="Calendário" sub="Feriados nacionais e aniversários da equipe." />
+      <Header title="Calendário" sub="Feriados nacionais, aniversários da equipe e seus compromissos. Clique num dia para marcar um compromisso." />
       <Loading q={q} />
       <div className="cal-layout">
         <div>
@@ -80,26 +90,29 @@ export default function Calendario() {
               const ev = d ? byDay.get(d) ?? [] : [];
               const hol = ev.find((e) => e.kind === 'holiday');
               return (
-                <div key={i} className={'cal-day' + (!d ? ' empty' : '') + (d === today ? ' today' : '') + (hol ? ' hol' : '') + (d && weekday(d) % 6 === 0 ? ' we' : '')}>
+                <div key={i} className={'cal-day' + (!d ? ' empty' : ' click') + (d === today ? ' today' : '') + (hol ? ' hol' : '') + (d && weekday(d) % 6 === 0 ? ' we' : '')}
+                  onClick={d ? () => setDay(d) : undefined} role={d ? 'button' : undefined} tabIndex={d ? 0 : undefined} onKeyDown={d ? (e) => e.key === 'Enter' && setDay(d) : undefined}
+                  aria-label={d ? `Dia ${+d.slice(8)}: ver ou marcar compromisso` : undefined}>
                   {d && <><span className="cal-n">{+d.slice(8)}</span>
-                    {ev.map((e, k) => <span key={k} className={'cal-ev ' + e.kind} title={e.label}>{e.kind === 'birthday' ? '🎂 ' + e.label.split(' ')[0] : e.label.replace(' (ponto facultativo)', '')}</span>)}</>}
+                    {ev.map((e, k) => <span key={k} className={'cal-ev ' + e.kind} title={e.label}>{e.kind === 'birthday' ? '🎂 ' + e.label.split(' ')[0] : e.kind === 'appointment' ? '🕑 ' + e.label : e.label.replace(' (ponto facultativo)', '')}</span>)}</>}
                 </div>
               );
             })}
           </div>
-          <p className="note"><span className="cal-key holiday" /> feriado nacional · <span className="cal-key optional" /> ponto facultativo · 🎂 aniversário. Feriados estaduais e municipais não aparecem.</p>
+          <p className="note"><span className="cal-key holiday" /> feriado nacional · <span className="cal-key optional" /> ponto facultativo · 🎂 aniversário · 🕑 compromisso. Feriados estaduais e municipais não aparecem.</p>
         </div>
         <div>
           <h2 style={{ marginTop: 0 }}>Próximos 60 dias</h2>
           <div className="panel">
             {next.length ? next.map((e, i) => (
               <div key={i} className="cal-next"><span className={'cal-when' + (e.date === today ? ' now' : '')}>{whenLabel(e.date, today)}</span>
-                <span>{e.kind === 'birthday' ? '🎂 ' + e.label : e.label}</span></div>
+                <span>{e.kind === 'birthday' ? '🎂 ' + e.label : e.kind === 'appointment' ? <button className="linkish" onClick={() => setDay(e.date)}>🕑 {e.label}</button> : e.label}</span></div>
             )) : <p className="note">Nada nos próximos 60 dias.</p>}
           </div>
           {can(...WRITE) && <BirthdayAdmin list={bdays} />}
         </div>
       </div>
+      {day && <DayDialog date={day} events={eventsBetween(day, day, bdays, appts)} onClose={() => setDay(null)} />}
     </>
   );
 }
@@ -154,12 +167,15 @@ function BirthdayAdmin({ list }: { list: Birthday[] }) {
 export function CalendarSummary() {
   const q = useBirthdays();
   const today = todayIso();
+  const aq = useAppointments(today, today);
   if (!q.data) return null;
   const week = upcoming(q.data, 7, today).filter((e) => e.kind === 'birthday');
   const hol = upcoming([], 120, today)[0];
-  if (!week.length && !hol) return null;
+  const todayAppts = aq.data ?? [];
+  if (!week.length && !hol && !todayAppts.length) return null;
   return (
     <div className="banner cal-banner">
+      {todayAppts.length > 0 && <span>🕑 <b>Hoje:</b> {todayAppts.map(apptLabel).join(' · ')}</span>}
       {week.length > 0 && <span>🎂 <b>Aniversários:</b> {week.map((e) => `${firstNames(e.label)} (${whenLabel(e.date, today).toLowerCase()})`).join(' · ')}</span>}
       {hol && <span>📅 <b>Próximo feriado:</b> {hol.label} – {whenLabel(hol.date, today).toLowerCase()}</span>}
       <Link className="btn sm" to="/calendario">Ver calendário</Link>
@@ -173,14 +189,18 @@ export function MiniCalendar() {
   const [ym, setYm] = useState({ y: +today.slice(0, 4), m: +today.slice(5, 7) });
   const q = useBirthdays();
   const bdays = q.data ?? [];
+  const [day, setDay] = useState<string | null>(null);
   const first = `${ym.y}-${pad(ym.m)}-01`;
   const last = `${ym.y}-${pad(ym.m)}-${pad(new Date(Date.UTC(ym.y, ym.m, 0)).getUTCDate())}`;
+  const aq = useAppointments(first < today ? first : today, last > plusDays(today, 60) ? last : plusDays(today, 60));
+  const appts = aq.data ?? [];
   const byDay = new Map<string, CalEvent[]>();
-  eventsBetween(first, last, bdays).forEach((e) => byDay.set(e.date, [...(byDay.get(e.date) ?? []), e]));
+  eventsBetween(first, last, bdays, appts).forEach((e) => byDay.set(e.date, [...(byDay.get(e.date) ?? []), e]));
   const cells: (string | null)[] = [...Array(weekday(first)).fill(null)];
   for (let d = 1; d <= +last.slice(8); d++) cells.push(`${ym.y}-${pad(ym.m)}-${pad(d)}`);
   const move = (n: number) => setYm(({ y, m }) => { const t = (y * 12 + m - 1) + n; return { y: Math.floor(t / 12), m: (t % 12) + 1 }; });
   const next = upcoming(bdays, 366, today);
+  const nextAppts = upcoming([], 60, today, appts).filter((e) => e.kind === 'appointment').slice(0, 5);
   const nextBdays = next.filter((e) => e.kind === 'birthday').slice(0, 5);
   const nextHol = next.find((e) => e.kind !== 'birthday');
   const month = MONTHS[ym.m - 1];
@@ -198,11 +218,21 @@ export function MiniCalendar() {
           {cells.map((d, i) => {
             const ev = d ? byDay.get(d) ?? [] : [];
             const cls = ev.some((e) => e.kind === 'holiday') ? ' hol' : ev.some((e) => e.kind === 'optional') ? ' opt' : '';
-            return <span key={i} className={'mini-day' + cls + (d === today ? ' today' : '') + (ev.some((e) => e.kind === 'birthday') ? ' bday' : '')}
-              title={ev.map((e) => (e.kind === 'birthday' ? '🎂 ' : '') + e.label).join('\n') || undefined}>{d ? +d.slice(8) : ''}</span>;
+            if (!d) return <span key={i} />;
+            return <button key={i} type="button" onClick={() => setDay(d)}
+              className={'mini-day' + cls + (d === today ? ' today' : '') + (ev.some((e) => e.kind === 'birthday') ? ' bday' : '') + (ev.some((e) => e.kind === 'appointment') ? ' appt' : '')}
+              title={ev.map((e) => (e.kind === 'birthday' ? '🎂 ' : e.kind === 'appointment' ? '🕑 ' : '') + e.label).join('\n') || 'Marcar compromisso'}>{+d.slice(8)}</button>;
           })}
         </div>
-        <p className="note mini-key"><span className="cal-key holiday" /> feriado · <span className="cal-key optional" /> facultativo · <span className="mini-dot" /> aniversário</p>
+        <p className="note mini-key"><span className="cal-key holiday" /> feriado · <span className="cal-key optional" /> facultativo · <span className="mini-dot" /> aniversário · <span className="mini-dot appt" /> compromisso</p>
+        <p className="note" style={{ margin: '0 0 4px' }}>Clique num dia para marcar um compromisso.</p>
+        {nextAppts.length > 0 && <>
+          <h3 className="mini-h">Próximos compromissos</h3>
+          {nextAppts.map((e, i) => (
+            <div key={i} className="cal-next"><span className={'cal-when' + (e.date === today ? ' now' : '')}>{whenLabel(e.date, today)}</span>
+              <button className="linkish" onClick={() => setDay(e.date)}>🕑 {e.label}</button></div>
+          ))}
+        </>}
         <h3 className="mini-h">Próximos aniversários</h3>
         {nextBdays.length ? nextBdays.map((e, i) => (
           <div key={i} className="cal-next"><span className={'cal-when' + (e.date === today ? ' now' : '')}>{whenLabel(e.date, today)}</span><span>🎂 {firstNames(e.label)}</span></div>
@@ -211,6 +241,66 @@ export function MiniCalendar() {
         {nextHol && <div className="cal-next"><span className={'cal-when' + (nextHol.date === today ? ' now' : '')}>{whenLabel(nextHol.date, today)}</span><span>📅 {nextHol.label}</span></div>}
         <Link className="btn sm" to="/calendario" style={{ marginTop: 10 }}>Abrir calendário</Link>
       </div>
+      {day && <DayDialog date={day} events={eventsBetween(day, day, bdays, appts)} onClose={() => setDay(null)} />}
     </div>
+  );
+}
+
+const WEEK_FULL = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+
+/** Janela de um dia: o que já tem nele e o formulário para marcar ou editar um compromisso. */
+function DayDialog({ date, events, onClose }: { date: string; events: CalEvent[]; onClose: () => void }) {
+  const qc = useQueryClient();
+  const ref = useRef<HTMLDialogElement>(null);
+  const [edit, setEdit] = useState<Partial<Appointment>>({});
+  const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
+  useEffect(() => { ref.current?.showModal(); }, []);
+  const refresh = () => qc.invalidateQueries({ queryKey: ['appointments'] });
+  const save = async (e: FormEvent) => {
+    e.preventDefault(); setErr('');
+    if (!edit.title?.trim()) return setErr('Escreva o compromisso.');
+    setBusy(true);
+    try {
+      const body = { date: edit.date ?? date, time: edit.time || null, title: edit.title, notes: edit.notes || null, shared: !!edit.shared };
+      await api(edit.id ? `/appointments/${edit.id}` : '/appointments', { method: edit.id ? 'PATCH' : 'POST', json: body });
+      await refresh(); setEdit({});
+    } catch (x) { setErr((x as Error).message); } finally { setBusy(false); }
+  };
+  const remove = async () => {
+    if (!edit.id || !confirm('Excluir este compromisso?')) return;
+    setBusy(true);
+    try { await api(`/appointments/${edit.id}`, { method: 'DELETE' }); await refresh(); setEdit({}); } catch (x) { setErr((x as Error).message); } finally { setBusy(false); }
+  };
+  const set = (k: keyof Appointment) => (e: { target: { value: string } }) => setEdit({ ...edit, [k]: e.target.value });
+  return (
+    <dialog ref={ref} onClose={onClose} className="day-dialog">
+      <h3>{WEEK_FULL[weekday(date)]}, {date.slice(8, 10)}/{date.slice(5, 7)}/{date.slice(0, 4)}</h3>
+      {events.length > 0 ? <div className="day-list">{events.map((ev, i) => (
+        ev.kind === 'appointment' && ev.appt
+          ? <button key={i} type="button" className={'day-item appt' + (edit.id === ev.appt.id ? ' sel' : '')} disabled={!ev.appt.mine}
+              onClick={() => setEdit(ev.appt!)} title={ev.appt.mine ? 'Clique para editar' : `Marcado por ${ev.appt.owner}`}>
+              🕑 {ev.label}{ev.appt.shared && <span className="chip">👥 equipe</span>}{!ev.appt.mine && <span className="note"> · {ev.appt.owner}</span>}
+              {ev.appt.notes && <span className="task-details">↳ {ev.appt.notes}</span>}
+            </button>
+          : <div key={i} className={'day-item ' + ev.kind}>{ev.kind === 'birthday' ? '🎂 Aniversário: ' + ev.label : '📅 ' + ev.label}</div>
+      ))}</div> : <p className="note">Nada marcado neste dia.</p>}
+      <form onSubmit={save} className="day-form">
+        <h4>{edit.id ? 'Editar compromisso' : 'Novo compromisso'}</h4>
+        <label className="fld"><span>Compromisso</span><input value={edit.title ?? ''} onChange={set('title')} placeholder="Ex.: Reunião com o Diego" maxLength={200} autoFocus /></label>
+        <div className="day-row">
+          <label className="fld"><span>Hora (opcional)</span><input type="time" value={edit.time ?? ''} onChange={set('time')} /></label>
+          {edit.id && <label className="fld"><span>Data</span><input type="date" value={edit.date ?? date} onChange={set('date')} /></label>}
+        </div>
+        <label className="fld"><span>Observação (opcional)</span><input value={edit.notes ?? ''} onChange={set('notes')} maxLength={2000} /></label>
+        <label className="fld chk"><input type="checkbox" checked={!!edit.shared} onChange={(e) => setEdit({ ...edit, shared: e.target.checked })} /> Mostrar para toda a equipe</label>
+        {err && <div className="err">{err}</div>}
+        <div className="act">
+          {edit.id && <button type="button" className="btn" disabled={busy} onClick={remove}>Excluir</button>}
+          {edit.id && <button type="button" className="btn" onClick={() => setEdit({})}>Novo</button>}
+          <button type="button" className="btn" onClick={onClose}>Fechar</button>
+          <button type="submit" className="btn pri" disabled={busy}>{busy ? 'Salvando…' : 'Salvar'}</button>
+        </div>
+      </form>
+    </dialog>
   );
 }
