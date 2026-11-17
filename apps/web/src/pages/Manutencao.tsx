@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { groupDue, type DueGroup } from '@sgi/core';
-import { api } from '../lib/api';
+import { api, upload } from '../lib/api';
 import { fd, nf, todayIso } from '../lib/format';
 import { useAuth, WRITE } from '../lib/auth';
 import type { PlanItem, Vehicle } from '../lib/types';
@@ -175,6 +175,24 @@ export default function Manutencao() {
   const hq = useQuery({ queryKey: ['maint-hints'], queryFn: () => api<ServiceHint[]>('/maintenance/hints') });
   const rq = useQuery({ queryKey: ['maint-records'], queryFn: () => api<ServiceRecord[]>('/maintenance/records') });
   const itemsOf = (vehicleId: string) => plan.filter((p) => p.vehicleId === vehicleId);
+  const qcl = useQueryClient();
+  const [gmsg, setGmsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const importGestao = async (f: File | undefined, input: HTMLInputElement) => {
+    if (!f) return;
+    setGmsg({ ok: false, text: 'Importando ' + f.name + '…' });
+    try {
+      const r = await upload('/imports/gestao-frota', f) as unknown as { costs: { read: number; created: number; existing: number }; revisions: { vehicle: string; nextKm: number; items: number }[]; notFound: string[] };
+      const lines = [
+        `✅ Planilha importada.`,
+        ...r.revisions.map((x) => `🔧 ${x.vehicle}: próxima revisão no km ${nf(x.nextKm)} (${x.items} item(ns) do plano atualizado(s))`),
+        `🧾 Custos: ${r.costs.read} lido(s), ${r.costs.created} novo(s), ${r.costs.existing} já estavam no SGI.`,
+        ...(r.notFound.length ? [`⚠️ Não encontrei no SGI: ${r.notFound.join(', ')} (confira a placa/nome em Veículos).`] : []),
+      ];
+      setGmsg({ ok: true, text: lines.join('\n') });
+      await qcl.invalidateQueries();
+    } catch (e) { setGmsg({ ok: false, text: (e as Error).message }); }
+    input.value = '';
+  };
   const plan = q.data ?? [];
   const vehicles = (vq.data ?? []).filter((v) => v.active && v.status !== 'INATIVO');
   const groups = dueGroups(plan);
@@ -191,7 +209,12 @@ export default function Manutencao() {
   return (
     <>
       <Header title="Manutenção" sub="Alertas das próximas revisões por km, por data e pelo ritmo de uso de cada veículo. O que vier primeiro vale."
-        actions={write && <button className="btn" onClick={() => setEdit({})}>Nova revisão no plano</button>} />
+        actions={write && <>
+          <label className="btn pri" htmlFor="gestao-file" title="Aba Manutencoes = próxima revisão de cada veículo; aba Custos = serviços já feitos">Importar planilha Gestão Frota</label>
+          <input id="gestao-file" type="file" accept=".xlsx" hidden onChange={(e) => importGestao(e.target.files?.[0], e.target)} />
+          <button className="btn" onClick={() => setEdit({})}>Nova revisão no plano</button>
+        </>} />
+      {gmsg && <div className={'banner' + (gmsg.ok ? ' ok-banner' : '')} style={{ marginBottom: 12, whiteSpace: 'pre-line' }}>{gmsg.text}</div>}
       <Loading q={q} />
       {q.data && <>
         <h2>⚠️ Alertas {alerts.length > 0 && <span className="count-pill">{alerts.length}</span>}</h2>

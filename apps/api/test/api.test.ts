@@ -282,4 +282,32 @@ d('API', () => {
     expect((await call('GET', '/maintenance/hints', admin)).json().some((h: { costId: string }) => h.costId === bat.id)).toBe(false);
     expect(JSON.stringify((await call('GET', '/settings', admin)).json())).not.toContain('maintHints');
   });
+  it('importa a planilha Gestão Frota: próxima revisão vira base do prazo e Custos sem duplicar', async () => {
+    await call('POST', '/maintenance/plan', admin, { vehicleId, item: 'Revisão geral', intervalKm: 10000, intervalMonths: 12, lastKm: null, lastDate: null });
+    const wb = new ExcelJS.Workbook();
+    const m = wb.addWorksheet('Manutencoes');
+    m.addRow(['Veículo', 'Placa', 'Data da manutenção', 'KM da manutenção', 'Serviço realizado', 'Oficina/fornecedor', 'Valor', 'Próxima manutenção', 'KM atual']);
+    m.addRow(['SAVEIRO - 55', 'TPR0F55', null, null, null, null, null, 60263, 50270]);
+    m.addRow(['CARRO X', 'ZZZ9Z99', null, null, null, null, null, 1000, 10]);
+    const c = wb.addWorksheet('Custos');
+    c.addRow(['Data', 'Veículo', 'Placa', 'Categoria', 'Descrição', 'Fornecedor', 'Valor', 'Observação']);
+    c.addRow([new Date(Date.UTC(2026, 10, 9)), 'SAVEIR0 - 55', null, 'Manutenção', '5ª REVISÃO', 'VIASERRA', 1800, 'NF - 190001']);
+    c.addRow([new Date(Date.UTC(2026, 9, 15)), 'SAVEIRO - 55', 'TPR0F55', 'Conserto', 'Troca de parabrisa', 'Biocar', 270, null]);
+    const boundary = '----gestao';
+    const payload = Buffer.concat([
+      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="Gestao_frota_MATIAS.xlsx"\r\nContent-Type: application/octet-stream\r\n\r\n`),
+      Buffer.from(await wb.xlsx.writeBuffer()), Buffer.from(`\r\n--${boundary}--\r\n`)]);
+    const up = () => app.inject({ method: 'POST', url: '/api/v1/imports/gestao-frota', headers: { authorization: 'Bearer ' + admin, 'content-type': `multipart/form-data; boundary=${boundary}` }, payload });
+    const r1 = (await up()).json();
+    expect(r1.costs).toMatchObject({ read: 2, created: 2 });
+    expect(r1.revisions).toEqual([expect.objectContaining({ nextKm: 60263, lastDate: '2026-11-09' })]);
+    expect(r1.notFound).toEqual(['CARRO X']);
+    const plan = (await call('GET', '/maintenance/plan', admin)).json().find((p: { vehicleId: string; item: string }) => p.vehicleId === vehicleId && p.item === 'Revisão geral');
+    expect(plan).toMatchObject({ lastKm: 50263, lastDate: '2026-11-09', nextKm: 60263 });
+    const r2 = (await up()).json();
+    expect(r2.costs).toMatchObject({ created: 0, existing: 2 });
+    const recs = (await call('GET', '/maintenance/records', admin)).json().filter((x: { date: string; item: string }) => x.date === '2026-11-09' && x.item === 'Revisão geral');
+    expect(recs).toHaveLength(1);
+    expect((await call('GET', '/maintenance/hints', admin)).json().some((h: { date: string; vehicleId: string }) => h.date === '2026-11-09' && h.vehicleId === vehicleId)).toBe(false);
+  });
 });
