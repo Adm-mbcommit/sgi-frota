@@ -65,3 +65,12 @@ export function kmOnDate(trips: KmTrip[], plate: string, date: string): number |
   if (before) return before.valid && before.kmEnd != null ? before.kmEnd : before.kmStart;
   return ok.find((t) => t.startedAt > end)?.kmStart ?? null;
 }
+
+/** Nível do aviso por quilometragem: 'VENCIDO', ou o menor degrau atingido (ex.: 500, 1000, 1500); null se ainda longe. */
+export type KmLevel = 'VENCIDO' | number | null;
+export function kmAlertLevel(kmLeft: number | null, cfg: { kmAlert: number; kmAlert2: number; kmAlert3: number }): KmLevel {
+  if (kmLeft == null) return null;
+  if (kmLeft < 0) return 'VENCIDO';
+  const steps = [cfg.kmAlert3, cfg.kmAlert2, cfg.kmAlert].filter((x) => x > 0).sort((a, b) => a - b);
+  return steps.find((s) => kmLeft <= s) ?? null;
+}

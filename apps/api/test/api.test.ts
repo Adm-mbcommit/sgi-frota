@@ -148,6 +148,8 @@ d('API', () => {
     expect((await call('PUT', '/settings', reader, { speed: 90 })).statusCode).toBe(403);
     expect((await call('PUT', '/settings', admin, { pMin: 12 })).statusCode).toBe(400); // mínimo > máximo
     expect((await call('PUT', '/settings', admin, { inexistente: 1 })).statusCode).toBe(400);
+    expect((await call('PUT', '/settings', admin, { kmAlert2: 2000 })).statusCode).toBe(400); // 2º maior que o 1º
+    expect((await call('GET', '/settings', reader)).json()).toMatchObject({ kmAlert: 1500, kmAlert2: 1000, kmAlert3: 500 });
     await call('POST', '/imports/sync/token', admin);
     const r = await call('PUT', '/settings', admin, { speed: 90, kmAlert: 2000 });
     expect(r.statusCode).toBe(200);

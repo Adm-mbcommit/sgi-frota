@@ -2,12 +2,29 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { groupDue, type DueGroup } from '@sgi/core';
+import { groupDue, kmAlertLevel, type DueGroup } from '@sgi/core';
 import { api, upload } from '../lib/api';
 import { fd, nf, todayIso } from '../lib/format';
 import { useAuth, WRITE } from '../lib/auth';
 import type { PlanItem, Vehicle } from '../lib/types';
 import { Chip, DataTable, FormDialog, Header, Loading, nn, num } from '../components/ui';
+
+type KmCfg = { kmAlert: number; kmAlert2: number; kmAlert3: number };
+const KM_DEFAULT: KmCfg = { kmAlert: 1500, kmAlert2: 1000, kmAlert3: 500 };
+/** Degraus do aviso por km (Parâmetros). */
+export const useKmCfg = (): KmCfg => {
+  const q = useQuery({ queryKey: ['settings'], queryFn: () => api<KmCfg>('/settings'), staleTime: 10 * 60_000 });
+  return { ...KM_DEFAULT, ...(q.data ?? {}) };
+};
+/** Selo do aviso por km: 🔴 500, 🟠 1.000, 🟡 1.500 (ou os valores dos Parâmetros). */
+export function KmBadge({ kmLeft, cfg }: { kmLeft: number | null; cfg: KmCfg }) {
+  const lv = kmAlertLevel(kmLeft, cfg);
+  if (lv == null || lv === 'VENCIDO') return null;
+  const cls = lv <= cfg.kmAlert3 ? 'km3' : lv <= cfg.kmAlert2 ? 'km2' : 'km1';
+  const icon = cls === 'km3' ? '🔴' : cls === 'km2' ? '🟠' : '🟡';
+  const what = cls === 'km3' ? 'urgente' : cls === 'km2' ? 'confirmar agendamento' : 'agendar';
+  return <span className={'km-badge ' + cls}>{icon} Menos de {nf(lv)} km · {what}</span>;
+}
 
 export const usePlan = () => useQuery({ queryKey: ['plan'], queryFn: () => api<PlanItem[]>('/maintenance/plan') });
 
@@ -146,11 +163,14 @@ function ServiceDialog({ items, hint, allChecked, onClose }: { items: PlanItem[]
   );
 }
 
-function GroupCard({ g, plan, onRegister }: { g: DueGroup; plan: PlanItem[]; onRegister?: (items: PlanItem[]) => void }) {
+function GroupCard({ g, plan, cfg, onRegister }: { g: DueGroup; plan: PlanItem[]; cfg: KmCfg; onRegister?: (items: PlanItem[]) => void }) {
   const items = plan.filter((p) => g.ids.includes(p.id));
+  const lv = kmAlertLevel(g.kmLeft, cfg);
+  const lvCls = typeof lv === 'number' ? (lv <= cfg.kmAlert3 ? ' lv3' : lv <= cfg.kmAlert2 ? ' lv2' : ' lv1') : '';
   return (
-    <div className={'due-card ' + g.status.toLowerCase()}>
+    <div className={'due-card ' + g.status.toLowerCase() + lvCls}>
       <div className="due-head"><b>{vname(plan, g.plate)}</b><Chip s={g.status} /></div>
+      <KmBadge kmLeft={g.kmLeft} cfg={cfg} />
       <div className="due-items">{listItems(g.items)}</div>
       <ul className="due-facts">
         {kmText(g) && <li>🛣️ {kmText(g)}</li>}
@@ -167,6 +187,7 @@ export default function Manutencao() {
   const { can } = useAuth();
   const write = can(...WRITE);
   const q = usePlan();
+  const kmCfg = useKmCfg();
   const vq = useQuery({ queryKey: ['vehicles'], queryFn: () => api<Vehicle[]>('/vehicles') });
   const [reg, setReg] = useState<PlanItem[] | null>(null);
   const [edit, setEdit] = useState<Partial<PlanItem> | null>(null);
@@ -196,7 +217,8 @@ export default function Manutencao() {
   const plan = q.data ?? [];
   const vehicles = (vq.data ?? []).filter((v) => v.active && v.status !== 'INATIVO');
   const groups = dueGroups(plan);
-  const alerts = groups.filter((g) => g.status === 'VENCIDO' || g.status === 'ATENCAO' || g.status === 'CONFIRMAR');
+  const rankOf = (g: DueGroup) => (g.status === 'VENCIDO' ? 0 : g.status === 'ATENCAO' ? 1 + (g.kmLeft ?? 1e9) / 1e6 : 9);
+  const alerts = groups.filter((g) => g.status === 'VENCIDO' || g.status === 'ATENCAO' || g.status === 'CONFIRMAR').sort((a, b) => rankOf(a) - rankOf(b));
   const withPlan = new Set(plan.map((p) => p.vehicleId));
   const noPlan = vehicles.filter((v) => !withPlan.has(v.id));
   const noData = vehicles.map((v) => ({ v, items: plan.filter((p) => p.vehicleId === v.id && p.status === 'SEM_DADO') })).filter((x) => x.items.length);
@@ -219,7 +241,7 @@ export default function Manutencao() {
       {q.data && <>
         <h2>⚠️ Alertas {alerts.length > 0 && <span className="count-pill">{alerts.length}</span>}</h2>
         {alerts.length
-          ? <div className="due-grid">{alerts.map((g, i) => <GroupCard key={i} g={g} plan={plan} onRegister={write ? setReg : undefined} />)}</div>
+          ? <div className="due-grid">{alerts.map((g, i) => <GroupCard key={i} g={g} plan={plan} cfg={kmCfg} onRegister={write ? setReg : undefined} />)}</div>
           : <div className="banner ok-banner">Nenhuma revisão vencida ou perto de vencer. ✅</div>}
 
         {(hq.data?.length ?? 0) > 0 && <>
@@ -273,7 +295,7 @@ export default function Manutencao() {
           <thead><tr><th>Veículo</th><th>O quê</th><th>Por km</th><th>Por data</th><th>Data esperada</th><th>Situação</th>{write && <th />}</tr></thead>
           <tbody>{nextByVehicle.map(({ v, g }) => (
             <tr key={v.id}><td>{v.name}{noData.some((x) => x.v.id === v.id) && <div className="note">❔ há itens sem dados</div>}</td>
-              {g ? <><td className="wide">{listItems(g.items)}</td><td>{kmText(g) ?? '—'}</td><td>{dateText(g) ?? '—'}</td>
+              {g ? <><td className="wide">{listItems(g.items)}</td><td>{kmText(g) ?? '—'}<div><KmBadge kmLeft={g.kmLeft} cfg={kmCfg} /></div></td><td>{dateText(g) ?? '—'}</td>
                 <td><b>{g.expectedDate ? fd(g.expectedDate) : '—'}</b>{g.by && <span className="note"> ({g.by === 'km' ? 'pelo km' : 'pela data'})</span>}</td><td><Chip s={g.status} /></td></>
                 : <td colSpan={5} className="note">Todos os itens precisam de conferência (veja os alertas).</td>}
               {write && <td><button className="btn sm" onClick={() => setSvc({ items: itemsOf(v.id) })}>Lançar serviço anterior</button></td>}
@@ -311,13 +333,18 @@ export default function Manutencao() {
 /** Aviso no Início: revisões vencidas e perto de vencer. */
 export function MaintenanceSummary() {
   const q = usePlan();
+  const cfg = useKmCfg();
   if (!q.data) return null;
   const g = dueGroups(q.data);
   const late = g.filter((x) => x.status === 'VENCIDO');
-  const soon = g.filter((x) => x.status === 'ATENCAO');
+  const soon = g.filter((x) => x.status === 'ATENCAO').sort((a, b) => (a.kmLeft ?? 1e9) - (b.kmLeft ?? 1e9));
   const conf = g.filter((x) => x.status === 'CONFIRMAR');
   if (!late.length && !soon.length && !conf.length) return null;
-  const desc = (x: DueGroup) => `${vname(q.data!, x.plate)} (${x.items[0]}${x.items.length > 1 ? ' +' + (x.items.length - 1) : ''})`;
+  const desc = (x: DueGroup) => {
+    const lv = kmAlertLevel(x.kmLeft, cfg);
+    const tag = typeof lv === 'number' ? ` ${lv <= cfg.kmAlert3 ? '🔴' : lv <= cfg.kmAlert2 ? '🟠' : '🟡'} faltam ${nf(x.kmLeft)} km` : '';
+    return `${vname(q.data!, x.plate)} (${x.items[0]}${x.items.length > 1 ? ' +' + (x.items.length - 1) : ''}${tag})`;
+  };
   return (
     <div className={'banner cal-banner' + (late.length ? ' bad-banner' : '')}>
       <span>🔧 <b>Manutenção:</b> {[late.length && `${late.length} vencida(s): ${late.map(desc).join(', ')}`, soon.length && `${soon.length} perto de vencer: ${soon.map(desc).join(', ')}`, conf.length && `${conf.length} para conferir`].filter(Boolean).join(' · ')}</span>

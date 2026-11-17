@@ -47,7 +47,9 @@ type Cfg = Record<string, number | string | string[]>;
 /** Parâmetros editáveis, agrupados, com a explicação de cada um (ver packages/core/src/config.ts). */
 const GROUPS: { title: string; items: [key: string, label: string, unit: string, step?: string][] }[] = [
   { title: 'Alertas', items: [
-    ['kmAlert', 'Avisar manutenção quando faltar', 'km'],
+    ['kmAlert', '1º aviso de manutenção (agendar) quando faltar', 'km'],
+    ['kmAlert2', '2º aviso de manutenção (confirmar agendamento) quando faltar', 'km'],
+    ['kmAlert3', '3º aviso de manutenção (urgente) quando faltar', 'km'],
     ['dayAlert', 'Avisar manutenção quando faltar', 'dias'],
     ['docDays', 'Avisar documentos e CNH com antecedência de', 'dias'],
     ['speed', 'Excesso de velocidade acima de', 'km/h'],

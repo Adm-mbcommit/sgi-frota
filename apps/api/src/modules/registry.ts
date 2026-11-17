@@ -68,6 +68,7 @@ export default async function registryRoutes(app: FastifyInstance) {
     const b = parse(z.object(Object.fromEntries(Object.keys(DEFAULT_CONFIG).filter((k) => k !== 'empresa' && k !== 'postos').map((k) => [k, num])) as Record<string, typeof num>).partial().strict(), req.body);
     const cur = { ...(await loadConfig(db, req.user.org)), ...b };
     if (cur.pMin >= cur.pMax) throw new HttpError(400, 'invalid_range', 'O preço mínimo por litro precisa ser menor que o máximo.');
+    if (!(cur.kmAlert > cur.kmAlert2 && cur.kmAlert2 > cur.kmAlert3)) throw new HttpError(400, 'invalid_range', 'Os avisos de manutenção por km precisam ir diminuindo: 1º > 2º > 3º (ex.: 1.500, 1.000 e 500).');
     if (cur.kmlMin >= cur.kmlMax) throw new HttpError(400, 'invalid_range', 'O consumo mínimo (km/L) precisa ser menor que o máximo.');
     // merge no próprio banco, para não apagar campos gravados ao mesmo tempo (ex.: sincronização)
     await db.update(organizations).set({ settings: sql`${organizations.settings} || ${JSON.stringify(b)}::jsonb` }).where(eq(organizations.id, req.user.org));

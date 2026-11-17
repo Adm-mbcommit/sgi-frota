@@ -14,7 +14,9 @@ e podem ser alterados pelo administrador em `PUT /api/v1/settings`.
 | `pMin`–`pMax` | R$ 4–10 | Faixa plausível de preço por litro |
 | `kmlMin`–`kmlMax` | 5–20 km/L | Faixa plausível de consumo |
 | `speed` | 100 km/h | Limite para contar excesso de velocidade |
-| `kmAlert` | 1.500 km | Manutenção entra em ATENÇÃO |
+| `kmAlert` | 1.500 km | Manutenção entra em ATENÇÃO (1º aviso: 🟡 agendar) |
+| `kmAlert2` | 1.000 km | 2º aviso: 🟠 confirmar agendamento |
+| `kmAlert3` | 500 km | 3º aviso: 🔴 urgente |
 | `dayAlert` | 30 dias | Manutenção entra em ATENÇÃO (por data ou pela previsão de uso) |
 | `docDays` | 60 dias | Documentos e CNH entram em PRÓXIMO |
 | `paceDays` | 60 dias | Janela do ritmo de uso (km/dia) |
@@ -76,6 +78,8 @@ tira o CONFIRMAR e, se houver valor, lança o custo em Custos.
   **próxima revisão** de cada veículo, que vira a base dos itens de revisão do plano (Revisão geral, Troca do óleo,
   Filtro do óleo: último km = próxima − intervalo; data = a da linha ou a revisão mais recente da aba *Custos*).
   A aba *Custos* entra em Custos sem duplicar (veículo, data e descrição) e as revisões viram registros no histórico.
+- **Avisos por km em degraus** (`kmAlertLevel`): faltando ≤ `kmAlert`, ≤ `kmAlert2` e ≤ `kmAlert3` km o alerta muda de
+  nível (🟡 → 🟠 → 🔴); os três valores são ajustáveis em Parâmetros e precisam ir diminuindo.
 - As revisões previstas aparecem no Calendário (🔧; vencidas no dia de hoje) e o Início mostra vencidas, perto de
   vencer e para conferir.
 

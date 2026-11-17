@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { expectedDue, groupDue, kmOnDate, type DueItem } from '../src/maintenance.js';
+import { expectedDue, groupDue, kmAlertLevel, kmOnDate, type DueItem } from '../src/maintenance.js';
 
 const base = (o: Partial<DueItem>): DueItem => ({ plate: 'QXI9C75', item: 'Troca do óleo', status: 'OK', nextKm: 149126, kmLeft: 2415, dueDate: '2027-06-30', daysLeft: 226, forecastDays: 40.2, ...o });
 
@@ -28,5 +28,9 @@ describe('agenda de manutenção', () => {
     expect(kmOnDate(trips, 'TPR0F55', '2026-09-04')).toBe(40264);
     expect(kmOnDate(trips, 'TPR0F55', '2026-09-01')).toBe(40100);
     expect(kmOnDate(trips, 'XXX', '2026-09-04')).toBeNull();
+  });
+  it('avisos de 1.500, 1.000 e 500 km', () => {
+    const cfg = { kmAlert: 1500, kmAlert2: 1000, kmAlert3: 500 };
+    expect([2000, 1500, 1200, 1000, 700, 500, 0, -1, null].map((k) => kmAlertLevel(k, cfg))).toEqual([null, 1500, 1500, 1000, 1000, 500, 500, 'VENCIDO', null]);
   });
 });
