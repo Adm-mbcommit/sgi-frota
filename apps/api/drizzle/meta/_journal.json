@@ -57,6 +57,13 @@
       "when": 1794923255190,
       "tag": "0007_saveiro55_quinta_revisao",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794923540381,
+      "tag": "0008_saveiros_revisoes_viaserra",
+      "breakpoints": true
     }
   ]
 }
