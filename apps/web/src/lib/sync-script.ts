@@ -6,7 +6,7 @@
  * index.html, gatilhos), que não pode ser alterado. Por isso os nomes têm o sufixo SGI e o
  * instalador só remove os gatilhos da própria função.
  * Os registros chegam pelo app do QR Code (gravação por script, que não dispara onEdit/onChange),
- * então o envio é por tempo: a cada 10 minutos. Envios sem novidade são ignorados pela API.
+ * então o envio é por tempo: a cada hora. Envios sem novidade são ignorados pela API.
  * O comentário com DriveApp é proposital: faz o Google pedir a permissão de ler o arquivo para exportá-lo.
  */
 export function sheetIdFromUrl(s: string) {
@@ -17,7 +17,7 @@ export function sheetIdFromUrl(s: string) {
 export function syncScript(url: string, token: string, sheetId: string) {
   return `/**
  * SGI Matias Brasil (módulo Frota) — envio automático do Comando de Bordo (projeto separado da planilha).
- * Envia a planilha ao SGI a cada 10 minutos. Não altera a planilha nem o sistema do QR Code.
+ * Envia a planilha ao SGI a cada hora. Não altera a planilha nem o sistema do QR Code.
  * Para ativar: salve (ícone de disquete), escolha a função "instalarSGI" e clique em Executar.
  * Para enviar na hora: escolha "enviarParaSGI" e clique em Executar.
  * Necessário para exportar a planilha: DriveApp.getFiles()
@@ -47,9 +47,9 @@ function instalarSGI() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
     if (t.getHandlerFunction() === 'enviarParaSGI') ScriptApp.deleteTrigger(t);
   });
-  ScriptApp.newTrigger('enviarParaSGI').timeBased().everyMinutes(10).create();
+  ScriptApp.newTrigger('enviarParaSGI').timeBased().everyHours(1).create();
   enviarParaSGI();
-  console.log('Pronto! A planilha agora é enviada ao SGI a cada 10 minutos.');
+  console.log('Pronto! A planilha agora é enviada ao SGI a cada hora.');
 }
 `;
 }
