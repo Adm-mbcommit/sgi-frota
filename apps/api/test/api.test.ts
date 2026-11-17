@@ -312,4 +312,15 @@ d('API', () => {
     expect(recs).toHaveLength(1);
     expect((await call('GET', '/maintenance/hints', admin)).json().some((h: { date: string; vehicleId: string }) => h.date === '2026-11-09' && h.vehicleId === vehicleId)).toBe(false);
   });
+  it('documentos guardam o link do PDF (CRLV) e quem consulta vê', async () => {
+    const body = { crlv: '2027-05-31', ipva: null, licensing: null, insurance: null, confirmed: true, links: { crlv: 'https://drive.google.com/file/d/abc123/view' } };
+    expect((await call('PUT', `/documents/${vehicleId}`, admin, { ...body, links: { crlv: 'javascript:alert(1)' } })).statusCode).toBe(400);
+    expect((await call('PUT', `/documents/${vehicleId}`, admin, body)).statusCode).toBe(200);
+    const d = (await call('GET', '/documents', reader)).json().find((x: { vehicleId: string }) => x.vehicleId === vehicleId);
+    expect(d.links).toEqual({ crlv: 'https://drive.google.com/file/d/abc123/view' });
+    await call('PUT', `/documents/${vehicleId}`, admin, { ...body, links: { insurance: 'https://drive.google.com/file/d/seg/view' } });
+    expect((await call('GET', '/documents', admin)).json().find((x: { vehicleId: string }) => x.vehicleId === vehicleId).links).toMatchObject({ crlv: expect.any(String), insurance: expect.any(String) });
+    await call('PUT', `/documents/${vehicleId}`, admin, { ...body, links: { crlv: '' } });
+    expect((await call('GET', '/documents', admin)).json().find((x: { vehicleId: string }) => x.vehicleId === vehicleId).links.crlv).toBeUndefined();
+  });
 });

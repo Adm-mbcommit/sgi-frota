@@ -171,18 +171,29 @@ export default async function managementRoutes(app: FastifyInstance) {
 
   /* ---- documentos ---- */
   app.get('/documents', read, async (req) => {
-    const { analysis: A, ids } = await analyzeOrg(db, req.user.org);
-    return A.docs.map((d) => ({ ...d, vehicleId: ids.vehicleByPlate.get(d.plate), vehicleName: A.vehicles.find((v) => v.plate === d.plate)?.name }));
+    const [{ analysis: A, ids }, rows] = await Promise.all([analyzeOrg(db, req.user.org),
+      db.select({ vehicleId: vehicleDocuments.vehicleId, links: vehicleDocuments.links }).from(vehicleDocuments).where(eq(vehicleDocuments.organizationId, req.user.org))]);
+    const links = new Map(rows.map((r) => [r.vehicleId, r.links ?? {}]));
+    return A.docs.map((d) => {
+      const vehicleId = ids.vehicleByPlate.get(d.plate);
+      return { ...d, vehicleId, vehicleName: A.vehicles.find((v) => v.plate === d.plate)?.name, links: (vehicleId && links.get(vehicleId)) || {} };
+    });
   });
 
   app.put('/documents/:id', write, async (req) => {
     const { id: vehicleId } = parse(idParam, req.params);
     const b = parse(z.object({ crlv: isoDate.nullable(), ipva: isoDate.nullable(), licensing: isoDate.nullable(), insurance: isoDate.nullable(),
-      insurer: z.string().nullable().optional(), policy: z.string().nullable().optional(), confirmed: z.boolean() }), req.body);
+      insurer: z.string().nullable().optional(), policy: z.string().nullable().optional(), confirmed: z.boolean(),
+      // links dos PDFs (Google Drive); vazio apaga o link
+      links: z.object(Object.fromEntries(['crlv', 'ipva', 'licensing', 'insurance'].map((k) => [k, z.union([z.literal(''), z.string().url().regex(/^https:\/\//, 'Use um link https')]).nullable().optional()]))).optional() }), req.body);
     const [v] = await db.select().from(vehicles).where(and(eq(vehicles.id, vehicleId), eq(vehicles.organizationId, req.user.org)));
     if (!v) throw notFound('Veículo');
-    const [d] = await db.insert(vehicleDocuments).values({ ...b, vehicleId, organizationId: req.user.org })
-      .onConflictDoUpdate({ target: vehicleDocuments.vehicleId, set: b }).returning();
+    const [cur] = await db.select({ links: vehicleDocuments.links }).from(vehicleDocuments).where(eq(vehicleDocuments.vehicleId, vehicleId));
+    const links = { ...(cur?.links ?? {}) } as Record<string, string>;
+    for (const [k, url] of Object.entries(b.links ?? {})) { if (url) links[k] = url as string; else if (url === '' || url === null) delete links[k]; }
+    const set = { ...b, links };
+    const [d] = await db.insert(vehicleDocuments).values({ ...set, vehicleId, organizationId: req.user.org })
+      .onConflictDoUpdate({ target: vehicleDocuments.vehicleId, set }).returning();
     await audit(db, req, 'update', 'documents', vehicleId, b);
     return d;
   });

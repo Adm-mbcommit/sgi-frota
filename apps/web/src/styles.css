@@ -347,3 +347,5 @@ button.day-item.sel{outline:2px solid var(--accent)}
 .day-item.birthday{background:var(--b-bday);color:var(--t-bday)}
 .day-item.maintenance{background:var(--b-maint);color:var(--t-maint)}
 button.day-item{background:var(--b-appt);border-left:3px solid var(--ev-appt)}
+.doc-links{display:flex;gap:4px;flex-wrap:wrap}
+.doc-link{text-decoration:none;background:color-mix(in srgb,var(--ev-hol, #e5484d) 12%,var(--surface));border-color:color-mix(in srgb,var(--ev-hol, #e5484d) 35%,var(--line))}

@@ -72,4 +72,5 @@ Feriados nacionais são calculados no front (`nationalHolidays` do `@sgi/core`, 
 | POST | /maintenance/hints/dismiss | ADMIN, GESTOR | `{key}` tira uma sugestão da lista |
 | POST | /maintenance/plan/:id/records | ADMIN, GESTOR | aceita `costId` (liga a um custo existente); responde `updatedPlan` (false = serviço mais antigo, só histórico) |
 | POST | /imports/gestao-frota | ADMIN, GESTOR | .xlsx "Gestão Frota MATIAS" (abas Manutencoes e Custos); reimportação segura |
+| GET / PUT | /documents/:vehicleId | todos / ADMIN, GESTOR | Datas dos documentos e `links` dos PDFs `{crlv, ipva, licensing, insurance}` (https; vazio apaga) |
 

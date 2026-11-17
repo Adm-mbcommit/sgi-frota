@@ -241,6 +241,8 @@ export const vehicleDocuments = pgTable('vehicle_documents', {
   insurer: text('insurer'),
   policy: text('policy'),
   confirmed: boolean('confirmed').notNull().default(false),
+  /** Links dos arquivos (PDF no Google Drive): { crlv, ipva, licensing, insurance }. */
+  links: jsonb('links').$type<Record<string, string>>().notNull().default({}),
   updatedAt: updatedAt(),
 }, (t) => [uniqueIndex('docs_vehicle_uq').on(t.vehicleId)]);
 
