@@ -26,6 +26,8 @@ O sistema passou a se chamar **SGI Matias Brasil**, com um módulo por setor. Fr
   formulário do Comando de Bordo, que chega ao SGI pela sincronização automática.
 
 ## Fase 4 — Gestão
+- [x] Custos da frota importados do Mais Controle (relatório Pagamentos)
+- [ ] Integração automática com o Mais Controle (se tiverem API)
 - [x] Alertas das próximas revisões na tela de Manutenção, no Calendário (🔧) e no Início
 - [ ] Alertas por e-mail/WhatsApp (manutenção, documentos, CNH, excesso de velocidade)
 - [x] Links dos PDFs dos documentos (CRLV 2026 dos 4 veículos já ligados ao Google Drive)

@@ -134,13 +134,16 @@ export default async function managementRoutes(app: FastifyInstance) {
       const same = out.find((h) => h.source === 'custos' && h.vehicleId === c.vehicleId && h.date === c.date);
       if (same) {
         same.keys.push('c' + c.id);
-        same.description = `${same.description} + ${c.description.trim()}`;
+        // parcelas do mesmo serviço repetem a descrição e a NF: não repete no texto
+        if (!same.description.split(' + ').includes(c.description.trim())) same.description = `${same.description} + ${c.description.trim()}`;
         same.supplier ??= c.supplier;
-        if (nfText) same.invoice = same.invoice ? `${same.invoice}; ${nfText}` : nfText;
+        if (nfText && !(same.invoice ?? '').split('; ').includes(nfText)) same.invoice = same.invoice ? `${same.invoice}; ${nfText}` : nfText;
         if (c.amount != null) same.amount = (same.amount ?? 0) + c.amount;
         continue;
       }
-      const km = kmOnDate(A.trips, plate, c.date);
+      const nth = c.description.match(/(\d+)\s*[ªºo°]?\s*revis/i);
+      // "2ª revisão" ≈ 20.000 km (revisões a cada 10.000 km); senão estima pelas viagens do dia
+      const km = nth ? Number(nth[1]) * 10000 : kmOnDate(A.trips, plate, c.date);
       out.push({ key: 'c' + c.id, keys: ['c' + c.id], source: 'custos', vehicleId: c.vehicleId!, vehicleName, date: c.date, km: km != null ? Math.round(km) : null, kmEstimated: true,
         description: c.description.trim(), supplier: c.supplier, invoice: nfText, amount: c.amount, costId: c.id });
     }

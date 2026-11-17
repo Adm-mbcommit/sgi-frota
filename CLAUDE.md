@@ -68,7 +68,8 @@ e `can(...)` no front.
 
 - O **SGI é o sistema oficial** da frota. A planilha "Gestão Frota MATIAS" deixou de ser usada (17/11/2026); os dados úteis
   dela foram gravados pela migração `0006_dados_planilha_gestao` (base das revisões, histórico, modelos).
-- Continua entrando sozinho: Comando de Bordo (sincronização) e Chronos (importação manual).
+- Continua entrando sozinho: Comando de Bordo (sincronização). Importação manual: Chronos e **Mais Controle**
+  (relatório Pagamentos → Custos da Frota, sem combustível; ver REGRAS-DE-NEGOCIO).
 
 ## Próximos passos (docs/ROADMAP.md)
 

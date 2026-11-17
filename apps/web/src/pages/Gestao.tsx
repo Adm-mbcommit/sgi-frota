@@ -73,6 +73,19 @@ export function Importacoes() {
   const { can } = useAuth(); const qc = useQueryClient();
   const q = useQuery({ queryKey: ['imports'], queryFn: () => api<{ id: string; kind: string; fileName: string; stats: Record<string, unknown>; at: string }[]>('/imports'), refetchInterval: 60_000 });
   const [msg, setMsg] = useState('');
+  const sendMc = async (f: File | undefined, input: HTMLInputElement) => {
+    if (!f) return; setMsg('Importando ' + f.name + '…');
+    try {
+      const r = await upload('/imports/mais-controle', f) as unknown as { read: number; created: number; existing: number; skippedFuel: number; withoutVehicle: number; replaced: { date: string; vehicle: string; description: string }[] };
+      setMsg([`✅ Mais Controle: ${r.read} parcela(s) lida(s), ${r.created} nova(s), ${r.existing} já estavam no SGI.`,
+        `⛽ ${r.skippedFuel} de combustível ficaram de fora (já vêm do Comando de Bordo).`,
+        r.withoutVehicle ? `🚗 ${r.withoutVehicle} sem veículo identificado (pedágios, seguros de mais de um carro etc.): entram como custo da frota.` : '',
+        r.replaced.length ? `🔁 Substituídos pelos lançamentos do Mais Controle: ${r.replaced.map((x) => `${x.vehicle} ${x.date.split('-').reverse().join('/')} (${x.description})`).join('; ')}.` : '',
+      ].filter(Boolean).join('\n'));
+      await qc.invalidateQueries();
+    } catch (e) { setMsg((e as Error).message); }
+    input.value = '';
+  };
   const send = async (path: string, f?: File) => {
     if (!f) return; setMsg('Importando ' + f.name + '…');
     try { const r = await upload(path, f); setMsg('Importado: ' + Object.entries(r).filter(([k]) => k !== 'id').map(([k, v]) => `${k} ${v}`).join(', ')); await qc.invalidateQueries(); }
@@ -84,10 +97,12 @@ export function Importacoes() {
       {can(...WRITE) && <div className="two">
         <div className="panel"><h3 style={{ marginTop: 0 }}>Comando de Bordo</h3><p className="note">Baixe a planilha do Google Drive como .xlsx (abas Registros, Abastecimentos e manutencao_diaria).</p>
           <div className="drop"><label className="btn pri" htmlFor="cb">Escolher arquivo</label><input id="cb" type="file" accept=".xlsx" hidden onChange={(e) => send('/imports/comando-bordo', e.target.files?.[0])} /></div></div>
+        <div className="panel"><h3 style={{ marginTop: 0 }}>Mais Controle (pagamentos)</h3><p className="note">No Mais Controle, exporte o relatório de <b>Pagamentos</b> em Excel. Entram os custos da Frota (sem combustível, que já vem do Comando de Bordo). Pode importar todo mês: não duplica.</p>
+          <div className="drop"><label className="btn pri" htmlFor="mc">Escolher arquivo</label><input id="mc" type="file" accept=".xlsx" hidden onChange={(e) => sendMc(e.target.files?.[0], e.target)} /></div></div>
         <div className="panel"><h3 style={{ marginTop: 0 }}>Chronos (rastreador)</h3><p className="note">Exporte o relatório "Períodos de utilização (BDV)" em .xlsx.</p>
           <div className="drop"><label className="btn pri" htmlFor="ch">Escolher arquivo</label><input id="ch" type="file" accept=".xlsx" hidden onChange={(e) => send('/imports/chronos', e.target.files?.[0])} /></div></div>
       </div>}
-      {msg && <div className="banner" style={{ marginTop: 14 }}>{msg}</div>}
+      {msg && <div className="banner" style={{ marginTop: 14, whiteSpace: 'pre-line' }}>{msg}</div>}
       {can('ADMIN') && <SyncPanel />}
       <h2>Histórico</h2>
       <Loading q={q} />
