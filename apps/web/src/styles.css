@@ -246,3 +246,39 @@ button.day-item.sel{outline:2px solid var(--accent)}
 .mini-day.maint{outline:1px dashed var(--conf);outline-offset:-2px}
 .day-item.maintenance{background:var(--conf-bg);color:var(--conf)}.day-item.maintenance a{color:inherit}
 .day-item.late,.cal-next .late,.cal-when.late{color:var(--bad);font-weight:600}
+
+/* ---------- seletor de período (dois meses) ---------- */
+.dr{position:relative;display:inline-block}
+.dr-field{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:13px;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 14px}
+.dr-field:hover,.dr-field.open{border-color:var(--accent)}
+.dr-field:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.dr-arrow{color:var(--muted)}
+.dr-pop{position:absolute;z-index:50;top:calc(100% + 6px);left:0;display:flex;gap:0;background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line));border-radius:12px;box-shadow:0 18px 40px rgba(0,0,0,.28);overflow:hidden}
+.dr-presets{display:flex;flex-direction:column;gap:2px;padding:12px 8px;border-right:1px solid var(--line);min-width:128px}
+.dr-preset{all:unset;cursor:pointer;font-size:12.5px;padding:7px 10px;border-radius:6px;color:var(--fg)}
+.dr-preset:hover{background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.dr-preset.on{background:color-mix(in srgb,var(--accent) 24%,transparent);color:var(--accent);font-weight:600}
+.dr-main{padding:12px 14px}
+.dr-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.dr-hint{font-size:11.5px;color:var(--muted);text-align:center}
+.dr-btn{all:unset;cursor:pointer;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;font-size:18px;color:var(--fg)}
+.dr-btn:hover{background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.dr-months{display:flex;gap:22px}
+.dr-title{text-align:center;font-weight:600;font-size:13px;margin-bottom:6px}
+.dr-grid{display:grid;grid-template-columns:repeat(7,34px);row-gap:2px}
+.dr-wd{font-size:10.5px;color:var(--muted);text-align:center;padding:4px 0;font-weight:600}
+.dr-day{all:unset;box-sizing:border-box;cursor:pointer;height:32px;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-family:var(--mono);color:var(--fg)}
+.dr-day:hover{background:color-mix(in srgb,var(--accent) 18%,transparent);border-radius:6px}
+.dr-day.in{background:color-mix(in srgb,var(--accent) 20%,transparent);border-radius:0}
+.dr-day.lo{border-top-left-radius:8px;border-bottom-left-radius:8px}
+.dr-day.hi{border-top-right-radius:8px;border-bottom-right-radius:8px}
+.dr-day.edge{background:var(--accent);color:var(--accent-fg);font-weight:700}
+.dr-day.today{box-shadow:inset 0 0 0 1px var(--accent)}
+.dr-day.future{color:var(--muted)}
+.dr-day:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+@media (max-width:760px){
+  .dr-pop{flex-direction:column;left:0;right:auto;width:min(330px,calc(100vw - 32px))}
+  .dr-presets{flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line);min-width:0}
+  .dr-months{flex-direction:column}.dr-months .dr-month:nth-child(1){display:none}
+  .dr-grid{grid-template-columns:repeat(7,1fr)}
+}

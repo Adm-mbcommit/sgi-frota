@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { chipClass, STATUS_LABEL } from '../lib/format';
 import { usePeriod } from '../lib/period';
+import { DateRangePicker } from './DateRange';
 
 export const Chip = ({ s, label }: { s?: string | null; label?: string }) =>
   s ? <span className={'chip ' + chipClass(s)}>{label ?? STATUS_LABEL[s] ?? s}</span> : null;
@@ -19,12 +20,7 @@ export function Header({ title, sub, actions }: { title: string; sub?: string; a
 
 export function PeriodPicker() {
   const { period, setPeriod } = usePeriod();
-  return (
-    <div className="tools per">
-      <label>De <input type="date" value={period.from} onChange={(e) => e.target.value && setPeriod({ ...period, from: e.target.value })} /></label>
-      <label>Até <input type="date" value={period.to} onChange={(e) => e.target.value && setPeriod({ ...period, to: e.target.value })} /></label>
-    </div>
-  );
+  return <div className="tools per"><DateRangePicker value={period} onChange={setPeriod} /></div>;
 }
 
 export const Kpi = ({ label, value, note }: { label: string; value: ReactNode; note?: string }) => (
