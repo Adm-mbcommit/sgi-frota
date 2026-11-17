@@ -17,7 +17,7 @@ O sistema passou a se chamar **SGI Matias Brasil**, com um módulo por setor. Fr
 
 ## Fase 3 — Automação dos dados
 - [x] Sincronização automática com a planilha do Google Drive: um Apps Script na planilha envia o .xlsx ao SGI
-      a cada 10 min (Importações → Sincronização automática). Ver ARQUITETURA.md.
+      a cada hora (Importações → Sincronização automática). Ver ARQUITETURA.md.
 - [ ] Importação do Chronos pela API do rastreador, se disponível
 - [ ] Reprocessar registros quando um apelido de placa/motorista for cadastrado
 

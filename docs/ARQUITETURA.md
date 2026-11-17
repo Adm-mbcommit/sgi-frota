@@ -82,7 +82,7 @@ Em vez de uma conta de serviço do Google, um Apps Script do próprio dono da pl
 1. O ADMIN clica em *Importações → Sincronização automática → Ligar*. A API gera uma chave aleatória
    (`POST /imports/sync/token`) e guarda só o hash sha256 em `organizations.settings.syncTokenHash`.
    A tela monta o script (`apps/web/src/lib/sync-script.ts`) com o endereço da API e a chave.
-2. O script é colado num projeto novo e a função `instalarSGI` cria um gatilho a cada 10 minutos
+2. O script é colado num projeto novo e a função `instalarSGI` cria um gatilho a cada hora
    (só remove gatilhos da própria função `enviarParaSGI`). Os registros chegam pelo app do QR Code, que grava
    por script e não dispara onEdit/onChange; por isso o envio é por tempo.
 3. A cada gatilho o script exporta a planilha como .xlsx e envia para `POST /imports/comando-bordo/sync`
