@@ -120,7 +120,7 @@ export default function Calendario() {
           <h2 style={{ marginTop: 0 }}>Próximos 60 dias</h2>
           <div className="panel">
             {next.length ? next.map((e, i) => (
-              <div key={i} className="cal-next"><span className={'cal-when' + (e.date === today ? ' now' : '')}>{whenLabel(e.date, today)}</span>
+              <div key={i} className={'cal-next k-' + e.kind}><span className={'cal-when' + (e.date === today ? ' now' : '')}>{whenLabel(e.date, today)}</span>
                 <span className={e.late ? 'late' : undefined}>{e.kind === 'birthday' ? '🎂 ' + e.label : e.kind === 'maintenance' ? <Link className="linkish" to="/frota/manutencao">🔧 {e.label}</Link> : e.kind === 'appointment' ? <button className="linkish" onClick={() => setDay(e.date)}>🕑 {e.label}</button> : e.label}</span></div>
             )) : <p className="note">Nada nos próximos 60 dias.</p>}
           </div>
@@ -244,21 +244,21 @@ export function MiniCalendar() {
         <p className="note" style={{ margin: '0 0 4px' }}>Clique num dia para marcar um compromisso.</p>
         {(() => { const nm = upcoming([], 30, today, [], maint).filter((e) => e.kind === 'maintenance').slice(0, 4); return nm.length > 0 && <>
           <h3 className="mini-h">Próximas revisões</h3>
-          {nm.map((e, i) => <div key={i} className="cal-next"><span className={'cal-when' + (e.late ? ' late' : e.date === today ? ' now' : '')}>{e.late ? 'Vencida' : whenLabel(e.date, today)}</span><Link className="linkish" to="/frota/manutencao">🔧 {e.label.replace(' (vencida)', '')}</Link></div>)}
+          {nm.map((e, i) => <div key={i} className={'cal-next k-' + e.kind}><span className={'cal-when' + (e.late ? ' late' : e.date === today ? ' now' : '')}>{e.late ? 'Vencida' : whenLabel(e.date, today)}</span><Link className="linkish" to="/frota/manutencao">🔧 {e.label.replace(' (vencida)', '')}</Link></div>)}
         </>; })()}
         {nextAppts.length > 0 && <>
           <h3 className="mini-h">Próximos compromissos</h3>
           {nextAppts.map((e, i) => (
-            <div key={i} className="cal-next"><span className={'cal-when' + (e.date === today ? ' now' : '')}>{whenLabel(e.date, today)}</span>
+            <div key={i} className={'cal-next k-' + e.kind}><span className={'cal-when' + (e.date === today ? ' now' : '')}>{whenLabel(e.date, today)}</span>
               <button className="linkish" onClick={() => setDay(e.date)}>🕑 {e.label}</button></div>
           ))}
         </>}
         <h3 className="mini-h">Próximos aniversários</h3>
         {nextBdays.length ? nextBdays.map((e, i) => (
-          <div key={i} className="cal-next"><span className={'cal-when' + (e.date === today ? ' now' : '')}>{whenLabel(e.date, today)}</span><span>🎂 {firstNames(e.label)}</span></div>
+          <div key={i} className={'cal-next k-' + e.kind}><span className={'cal-when' + (e.date === today ? ' now' : '')}>{whenLabel(e.date, today)}</span><span>🎂 {firstNames(e.label)}</span></div>
         )) : <p className="note">{q.isLoading ? 'Carregando…' : 'Nenhum aniversário cadastrado.'}</p>}
         {nextHol && <h3 className="mini-h">Próximo feriado</h3>}
-        {nextHol && <div className="cal-next"><span className={'cal-when' + (nextHol.date === today ? ' now' : '')}>{whenLabel(nextHol.date, today)}</span><span>📅 {nextHol.label}</span></div>}
+        {nextHol && <div className={'cal-next k-' + nextHol.kind}><span className={'cal-when' + (nextHol.date === today ? ' now' : '')}>{whenLabel(nextHol.date, today)}</span><span>📅 {nextHol.label}</span></div>}
         <Link className="btn sm" to="/calendario" style={{ marginTop: 10 }}>Abrir calendário</Link>
       </div>
       {day && <DayDialog date={day} events={eventsBetween(day, day, bdays, appts, maint)} onClose={() => setDay(null)} />}

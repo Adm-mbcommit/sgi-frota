@@ -292,3 +292,58 @@ button.day-item.sel{outline:2px solid var(--accent)}
 .km-badge.km2{background:var(--warn-bg);color:var(--warn)}
 .km-badge.km3{background:var(--bad-bg);color:var(--bad)}
 .due-card.lv1{border-left-color:var(--conf)}.due-card.lv2{border-left-color:var(--warn)}.due-card.lv3{border-left-color:var(--bad)}
+
+/* ---------- Calendário colorido ----------
+   Uma cor por tipo de evento; fundo translúcido sobre a superfície (funciona no claro e no escuro). */
+:root{--ev-hol:#e5484d;--ev-opt:#f08c00;--ev-bday:#d6409f;--ev-appt:#12a594;--ev-maint:#8e4ec6;--ev-we:#3e63dd}
+.cal-layout,.mini-cal-box,.day-dialog{
+  --t-hol:color-mix(in srgb,var(--ev-hol) 75%,var(--fg));--b-hol:color-mix(in srgb,var(--ev-hol) 16%,var(--surface));
+  --t-opt:color-mix(in srgb,var(--ev-opt) 75%,var(--fg));--b-opt:color-mix(in srgb,var(--ev-opt) 16%,var(--surface));
+  --t-bday:color-mix(in srgb,var(--ev-bday) 75%,var(--fg));--b-bday:color-mix(in srgb,var(--ev-bday) 15%,var(--surface));
+  --t-appt:color-mix(in srgb,var(--ev-appt) 75%,var(--fg));--b-appt:color-mix(in srgb,var(--ev-appt) 16%,var(--surface));
+  --t-maint:color-mix(in srgb,var(--ev-maint) 75%,var(--fg));--b-maint:color-mix(in srgb,var(--ev-maint) 15%,var(--surface));
+}
+.cal-nav b{font-size:18px;color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--surface));border-radius:20px;padding:4px 16px}
+.cal{border-color:color-mix(in srgb,var(--accent) 30%,var(--line));box-shadow:0 6px 18px color-mix(in srgb,var(--accent) 10%,transparent)}
+.cal-wd{background:color-mix(in srgb,var(--accent) 16%,var(--surface));color:var(--accent);text-align:center}
+.cal-wd:nth-child(1),.cal-wd:nth-child(7){background:color-mix(in srgb,var(--ev-we) 20%,var(--surface));color:color-mix(in srgb,var(--ev-we) 70%,var(--fg))}
+.cal-day.we{background:color-mix(in srgb,var(--ev-we) 5%,var(--surface))}
+.cal-day.empty{background:color-mix(in srgb,var(--bg) 70%,var(--surface))}
+.cal-day.hol{background:var(--b-hol)}
+.cal-n{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-size:12px}
+.cal-day.today{background:color-mix(in srgb,var(--accent) 9%,var(--surface));box-shadow:inset 0 0 0 2px var(--accent)}
+.cal-day.today .cal-n{background:var(--accent);color:var(--accent-fg)}
+.cal-day.hol .cal-n{color:var(--t-hol)}
+.cal-day.click:hover{filter:none;background:color-mix(in srgb,var(--accent) 7%,var(--surface))}
+.cal-ev{border-left:3px solid transparent;padding:1px 5px;border-radius:4px}
+.cal-ev.holiday{color:var(--t-hol);background:transparent;border-left:0;padding:0}
+.cal-ev.optional{background:var(--b-opt);color:var(--t-opt);border-left-color:var(--ev-opt)}
+.cal-ev.birthday{background:var(--b-bday);color:var(--t-bday);border-left-color:var(--ev-bday)}
+.cal-ev.appointment{background:var(--b-appt);color:var(--t-appt);border-left-color:var(--ev-appt)}
+.cal-ev.maintenance{background:var(--b-maint);color:var(--t-maint);border-left-color:var(--ev-maint)}
+.cal-key{width:12px;height:12px;border-radius:3px}
+.cal-key.holiday{background:var(--b-hol);border:1px solid var(--ev-hol)}.cal-key.optional{background:var(--b-opt);border:1px solid var(--ev-opt)}
+/* listas "próximos": barra colorida por tipo */
+.cal-next{border-left:4px solid var(--line);padding-left:10px;margin:4px 0;border-bottom:0;border-radius:4px;background:color-mix(in srgb,var(--line) 25%,transparent)}
+.cal-next.k-holiday{border-left-color:var(--ev-hol);background:var(--b-hol)}
+.cal-next.k-optional{border-left-color:var(--ev-opt);background:var(--b-opt)}
+.cal-next.k-birthday{border-left-color:var(--ev-bday);background:var(--b-bday)}
+.cal-next.k-appointment{border-left-color:var(--ev-appt);background:var(--b-appt)}
+.cal-next.k-maintenance{border-left-color:var(--ev-maint);background:var(--b-maint)}
+.cal-when.now{color:var(--accent)}
+/* calendário pequeno */
+.mini-nav b{color:var(--accent)}
+.mini-wd{color:var(--accent)}
+.mini-wd:nth-child(1),.mini-wd:nth-child(7){color:color-mix(in srgb,var(--ev-we) 70%,var(--fg))}
+.mini-day.hol{background:var(--b-hol);color:var(--t-hol)}
+.mini-day.opt{background:var(--b-opt);color:var(--t-opt)}
+.mini-day.today{background:var(--accent);color:var(--accent-fg);box-shadow:none}
+.mini-day.bday::after,.mini-dot{background:var(--ev-bday)}
+.mini-day.appt::before,.mini-dot.appt{background:var(--ev-appt)}
+.mini-day.maint{outline:1.5px dashed var(--ev-maint)}
+.mini-h{color:var(--accent)}
+/* janela do dia */
+.day-item.holiday{background:var(--b-hol);color:var(--t-hol)}.day-item.optional{background:var(--b-opt);color:var(--t-opt)}
+.day-item.birthday{background:var(--b-bday);color:var(--t-bday)}
+.day-item.maintenance{background:var(--b-maint);color:var(--t-maint)}
+button.day-item{background:var(--b-appt);border-left:3px solid var(--ev-appt)}
