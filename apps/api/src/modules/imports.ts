@@ -17,6 +17,7 @@ import { readWorkbook, sheetRows } from '../importers/xlsx.js';
 import { importComandoBordo } from '../importers/comando-bordo.js';
 import { ChronosFormatError, importChronos, mapChronos } from '../importers/chronos.js';
 import { loadResolver } from '../services/resolver.js';
+import { importGestao } from '../importers/gestao.js';
 import { audit } from '../services/audit.js';
 
 async function upload(req: FastifyRequest) {
@@ -95,6 +96,17 @@ export default async function importRoutes(app: FastifyInstance) {
     await mergeSettings(db, req.user.org, { syncTokenHash: null, syncLastHash: null });
     await audit(db, req, 'delete', 'sync_token', req.user.org);
     return reply.code(204).send();
+  });
+
+  /** Planilha "Gestão Frota MATIAS": próxima revisão (aba Manutencoes) e custos/serviços (aba Custos). */
+  app.post('/imports/gestao-frota', write, async (req) => {
+    const { name, wb } = await upload(req);
+    if (!sheetRows(wb, 'Manutencoes') && !sheetRows(wb, 'Custos')) throw new HttpError(400, 'sheet_missing', 'A planilha precisa ter a aba "Manutencoes" ou "Custos".');
+    const R = await loadResolver(db, req.user.org);
+    const stats = await importGestao(db, req.user.org, req.user.sub, R, wb);
+    const [imp] = await db.insert(imports).values({ organizationId: req.user.org, kind: 'GESTAO_FROTA', fileName: name, stats, userId: req.user.sub }).returning();
+    await audit(db, req, 'import', 'gestao_frota', imp.id, stats);
+    return { id: imp.id, ...stats };
   });
 
   app.post('/imports/chronos', write, async (req) => {

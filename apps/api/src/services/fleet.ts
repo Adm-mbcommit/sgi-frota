@@ -8,7 +8,7 @@ export async function loadConfig(db: DB, orgId: string): Promise<FleetConfig> {
   const [o] = await db.select().from(s.organizations).where(eq(s.organizations.id, orgId));
   const st = await db.select().from(s.stations).where(and(eq(s.stations.organizationId, orgId), eq(s.stations.active, true)));
   // Chaves sync* são internas da sincronização (hash da chave etc.): não vão para a configuração.
-  const settings = Object.fromEntries(Object.entries(o?.settings ?? {}).filter(([k]) => !k.startsWith('sync')));
+  const settings = Object.fromEntries(Object.entries(o?.settings ?? {}).filter(([k]) => !k.startsWith('sync') && !k.startsWith('maintHints')));
   return { ...DEFAULT_CONFIG, ...settings, empresa: o?.companyLabel ?? DEFAULT_CONFIG.empresa, postos: st.map((x) => x.name) };
 }
 

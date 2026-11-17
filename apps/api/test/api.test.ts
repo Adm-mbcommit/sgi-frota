@@ -148,6 +148,8 @@ d('API', () => {
     expect((await call('PUT', '/settings', reader, { speed: 90 })).statusCode).toBe(403);
     expect((await call('PUT', '/settings', admin, { pMin: 12 })).statusCode).toBe(400); // mínimo > máximo
     expect((await call('PUT', '/settings', admin, { inexistente: 1 })).statusCode).toBe(400);
+    expect((await call('PUT', '/settings', admin, { kmAlert2: 2000 })).statusCode).toBe(400); // 2º maior que o 1º
+    expect((await call('GET', '/settings', reader)).json()).toMatchObject({ kmAlert: 1500, kmAlert2: 1000, kmAlert3: 500 });
     await call('POST', '/imports/sync/token', admin);
     const r = await call('PUT', '/settings', admin, { speed: 90, kmAlert: 2000 });
     expect(r.statusCode).toBe(200);
@@ -247,5 +249,67 @@ d('API', () => {
     expect((await call('PATCH', `/appointments/${mineA.json().id}`, admin, { date: '2026-11-20', time: '10:00', title: 'Reunião', notes: 'sala 2' })).json()).toMatchObject({ time: '10:00', notes: 'sala 2', shared: false });
     expect((await call('GET', '/appointments?from=2026-12-01&to=2026-12-31', admin)).json()).toHaveLength(0);
     expect((await call('DELETE', `/appointments/${mineA.json().id}`, admin)).statusCode).toBe(204);
+  });
+  it('copia o plano de manutenção para outro veículo', async () => {
+    const v2 = (await call('POST', '/vehicles', admin, { plate: 'MFS7D92', name: 'UNO', refKm: 227000 })).json();
+    const r = await call('POST', '/maintenance/plan/copy', admin, { fromVehicleId: vehicleId, toVehicleId: v2.id, lastKm: 220000, lastDate: '2026-08-01' });
+    expect(r.statusCode).toBe(201);
+    expect(r.json().created).toBeGreaterThan(0);
+    expect((await call('POST', '/maintenance/plan/copy', admin, { fromVehicleId: vehicleId, toVehicleId: v2.id })).json()).toMatchObject({ created: 0 });
+    expect((await call('POST', '/maintenance/plan/copy', reader, { fromVehicleId: vehicleId, toVehicleId: v2.id })).statusCode).toBe(403);
+    expect((await call('POST', '/maintenance/plan/copy', admin, { fromVehicleId: v2.id, toVehicleId: v2.id })).statusCode).toBe(400);
+    const plan = (await call('GET', '/maintenance/plan', admin)).json().filter((p: { vehicleId: string }) => p.vehicleId === v2.id);
+    expect(plan[0]).toMatchObject({ lastKm: 220000, lastDate: '2026-08-01', nextKm: 230000 });
+  });
+  it('serviços de Custos viram sugestão; lançar serviço antigo não mexe no prazo nem duplica o custo', async () => {
+    const plan = (await call('GET', '/maintenance/plan', admin)).json().filter((p: { vehicleId: string }) => p.vehicleId === vehicleId);
+    const item = plan[0];
+    const cost = (await call('POST', '/costs', admin, { date: '2020-03-10', vehicleId, category: 'Manutenção', description: '4ª REVISÃO ', supplier: 'VIASERRA', amount: 2700, invoice: 'NF 188863' })).json();
+    let hints = (await call('GET', '/maintenance/hints', reader)).json();
+    expect(hints).toContainEqual(expect.objectContaining({ source: 'custos', costId: cost.id, description: '4ª REVISÃO', supplier: 'VIASERRA', date: '2020-03-10' }));
+    const before = (await call('GET', '/costs', admin)).json().length;
+    const r = await call('POST', `/maintenance/plan/${item.id}/records`, admin, { km: 1000, date: '2020-03-10', supplier: 'VIASERRA', costId: cost.id });
+    expect(r.statusCode).toBe(201);
+    expect(r.json()).toMatchObject({ updatedPlan: false, costId: cost.id });
+    const after = (await call('GET', '/maintenance/plan', admin)).json().find((p: { id: string }) => p.id === item.id);
+    expect(after).toMatchObject({ lastKm: item.lastKm, lastDate: item.lastDate });
+    expect((await call('GET', '/costs', admin)).json()).toHaveLength(before);
+    hints = (await call('GET', '/maintenance/hints', admin)).json();
+    expect(hints.some((h: { costId: string }) => h.costId === cost.id)).toBe(false);
+    expect((await call('GET', '/maintenance/records', admin)).json().some((x: { date: string }) => x.date === '2020-03-10')).toBe(true);
+    const bat = (await call('POST', '/costs', admin, { date: '2020-06-01', vehicleId, category: 'Manutenção', description: 'Troca de bateria', amount: 399 })).json();
+    expect((await call('GET', '/maintenance/hints', admin)).json().some((h: { costId: string }) => h.costId === bat.id)).toBe(true);
+    expect((await call('POST', '/maintenance/hints/dismiss', reader, { key: 'c' + bat.id })).statusCode).toBe(403);
+    expect((await call('POST', '/maintenance/hints/dismiss', admin, { key: 'c' + bat.id })).statusCode).toBe(204);
+    expect((await call('GET', '/maintenance/hints', admin)).json().some((h: { costId: string }) => h.costId === bat.id)).toBe(false);
+    expect(JSON.stringify((await call('GET', '/settings', admin)).json())).not.toContain('maintHints');
+  });
+  it('importa a planilha Gestão Frota: próxima revisão vira base do prazo e Custos sem duplicar', async () => {
+    await call('POST', '/maintenance/plan', admin, { vehicleId, item: 'Revisão geral', intervalKm: 10000, intervalMonths: 12, lastKm: null, lastDate: null });
+    const wb = new ExcelJS.Workbook();
+    const m = wb.addWorksheet('Manutencoes');
+    m.addRow(['Veículo', 'Placa', 'Data da manutenção', 'KM da manutenção', 'Serviço realizado', 'Oficina/fornecedor', 'Valor', 'Próxima manutenção', 'KM atual']);
+    m.addRow(['SAVEIRO - 55', 'TPR0F55', null, null, null, null, null, 60263, 50270]);
+    m.addRow(['CARRO X', 'ZZZ9Z99', null, null, null, null, null, 1000, 10]);
+    const c = wb.addWorksheet('Custos');
+    c.addRow(['Data', 'Veículo', 'Placa', 'Categoria', 'Descrição', 'Fornecedor', 'Valor', 'Observação']);
+    c.addRow([new Date(Date.UTC(2026, 10, 9)), 'SAVEIR0 - 55', null, 'Manutenção', '5ª REVISÃO', 'VIASERRA', 1800, 'NF - 190001']);
+    c.addRow([new Date(Date.UTC(2026, 9, 15)), 'SAVEIRO - 55', 'TPR0F55', 'Conserto', 'Troca de parabrisa', 'Biocar', 270, null]);
+    const boundary = '----gestao';
+    const payload = Buffer.concat([
+      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="Gestao_frota_MATIAS.xlsx"\r\nContent-Type: application/octet-stream\r\n\r\n`),
+      Buffer.from(await wb.xlsx.writeBuffer()), Buffer.from(`\r\n--${boundary}--\r\n`)]);
+    const up = () => app.inject({ method: 'POST', url: '/api/v1/imports/gestao-frota', headers: { authorization: 'Bearer ' + admin, 'content-type': `multipart/form-data; boundary=${boundary}` }, payload });
+    const r1 = (await up()).json();
+    expect(r1.costs).toMatchObject({ read: 2, created: 2 });
+    expect(r1.revisions).toEqual([expect.objectContaining({ nextKm: 60263, lastDate: '2026-11-09' })]);
+    expect(r1.notFound).toEqual(['CARRO X']);
+    const plan = (await call('GET', '/maintenance/plan', admin)).json().find((p: { vehicleId: string; item: string }) => p.vehicleId === vehicleId && p.item === 'Revisão geral');
+    expect(plan).toMatchObject({ lastKm: 50263, lastDate: '2026-11-09', nextKm: 60263 });
+    const r2 = (await up()).json();
+    expect(r2.costs).toMatchObject({ created: 0, existing: 2 });
+    const recs = (await call('GET', '/maintenance/records', admin)).json().filter((x: { date: string; item: string }) => x.date === '2026-11-09' && x.item === 'Revisão geral');
+    expect(recs).toHaveLength(1);
+    expect((await call('GET', '/maintenance/hints', admin)).json().some((h: { date: string; vehicleId: string }) => h.date === '2026-11-09' && h.vehicleId === vehicleId)).toBe(false);
   });
 });

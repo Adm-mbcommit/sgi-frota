@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { chipClass, STATUS_LABEL } from '../lib/format';
 import { usePeriod } from '../lib/period';
+import { DateRangePicker } from './DateRange';
 
 export const Chip = ({ s, label }: { s?: string | null; label?: string }) =>
   s ? <span className={'chip ' + chipClass(s)}>{label ?? STATUS_LABEL[s] ?? s}</span> : null;
@@ -19,12 +20,7 @@ export function Header({ title, sub, actions }: { title: string; sub?: string; a
 
 export function PeriodPicker() {
   const { period, setPeriod } = usePeriod();
-  return (
-    <div className="tools per">
-      <label>De <input type="date" value={period.from} onChange={(e) => e.target.value && setPeriod({ ...period, from: e.target.value })} /></label>
-      <label>Até <input type="date" value={period.to} onChange={(e) => e.target.value && setPeriod({ ...period, to: e.target.value })} /></label>
-    </div>
-  );
+  return <div className="tools per"><DateRangePicker value={period} onChange={setPeriod} /></div>;
 }
 
 export const Kpi = ({ label, value, note }: { label: string; value: ReactNode; note?: string }) => (
@@ -76,7 +72,7 @@ export function DataTable<T>({ rows, cols, filter, extra, limit = 300, maxh }: {
 }
 
 /* ---------- formulário em diálogo ---------- */
-export interface Field { name: string; label: string; type?: 'text' | 'number' | 'date' | 'check' | 'select'; value?: unknown; step?: string; options?: [string, string][]; required?: boolean }
+export interface Field { name: string; label: string; type?: 'text' | 'number' | 'date' | 'check' | 'select' | 'info'; value?: unknown; step?: string; options?: [string, string][]; required?: boolean }
 
 export function FormDialog({ title, fields, onSave, onClose, extra }: {
   title: string; fields: Field[]; onSave: (v: Record<string, string | boolean>) => Promise<unknown>; onClose: () => void; extra?: { label: string; run: () => Promise<unknown> };
@@ -92,11 +88,13 @@ export function FormDialog({ title, fields, onSave, onClose, extra }: {
     <dialog ref={ref} onClose={onClose}>
       <form onSubmit={(e) => {
         e.preventDefault(); const fd = new FormData(e.currentTarget); const o: Record<string, string | boolean> = {};
-        fields.forEach((f) => { o[f.name] = f.type === 'check' ? fd.get(f.name) === 'on' : String(fd.get(f.name) ?? ''); });
+        fields.forEach((f) => { if (f.type !== 'info') o[f.name] = f.type === 'check' ? fd.get(f.name) === 'on' : String(fd.get(f.name) ?? ''); });
         go(() => onSave(o));
       }}>
         <h3>{title}</h3>
-        {fields.map((f) => f.type === 'check'
+        {fields.map((f) => f.type === 'info'
+          ? <p key={f.name} className="banner" style={{ margin: '0 0 12px', fontSize: 13 }}>{f.label}</p>
+          : f.type === 'check'
           ? <label key={f.name} className="fld chk"><input type="checkbox" name={f.name} defaultChecked={!!f.value} /> {f.label}</label>
           : f.type === 'select'
             ? <label key={f.name} className="fld"><span>{f.label}</span><select name={f.name} defaultValue={String(f.value ?? '')}>{f.options!.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>

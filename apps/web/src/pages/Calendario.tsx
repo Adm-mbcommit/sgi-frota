@@ -7,6 +7,7 @@ import { api, upload } from '../lib/api';
 import { todayIso } from '../lib/format';
 import { useAuth, WRITE } from '../lib/auth';
 import { FormDialog, Header, Loading, num } from '../components/ui';
+import { dueGroups, usePlan } from './Manutencao';
 
 export interface Birthday { id: string; name: string; day: number; month: number; year?: number | null }
 export const useBirthdays = () => useQuery({ queryKey: ['birthdays'], queryFn: () => api<Birthday[]>('/birthdays'), staleTime: 10 * 60_000 });
@@ -29,23 +30,36 @@ const firstNames = (name: string) => {
   return rest ? `${w[0]} ${rest}` : w[0];
 };
 
-export interface CalEvent { date: string; kind: 'holiday' | 'optional' | 'birthday' | 'appointment'; label: string; appt?: Appointment }
+export interface CalEvent { date: string; kind: 'holiday' | 'optional' | 'birthday' | 'appointment' | 'maintenance'; label: string; appt?: Appointment; late?: boolean }
+
+/** Revisões previstas (data esperada: km pelo ritmo de uso ou data limite). Vencidas aparecem em hoje. */
+function useMaintEvents(today: string): CalEvent[] {
+  const q = usePlan();
+  if (!q.data) return [];
+  return dueGroups(q.data, today).filter((g) => g.expectedDate && g.status !== 'SEM_DADO' && g.status !== 'CONFIRMAR').map((g) => {
+    const name = q.data!.find((p) => p.plate === g.plate)?.vehicleName ?? g.plate;
+    const late = g.status === 'VENCIDO' || g.expectedDate! < today;
+    const what = g.items.length > 2 ? `${g.items.slice(0, 2).join(', ')} +${g.items.length - 2}` : g.items.join(', ');
+    return { date: late ? today : g.expectedDate!, kind: 'maintenance', label: `${name}: ${what}${late ? ' (vencida)' : ''}`, late };
+  });
+}
 
 /** Feriados, aniversários e compromissos entre duas datas (inclusive). */
-function eventsBetween(from: string, to: string, bdays: Birthday[], appts: Appointment[] = []): CalEvent[] {
+function eventsBetween(from: string, to: string, bdays: Birthday[], appts: Appointment[] = [], extra: CalEvent[] = []): CalEvent[] {
   const years = [+from.slice(0, 4), +to.slice(0, 4)].filter((y, i, a) => a.indexOf(y) === i);
   const hol = years.flatMap((y) => nationalHolidays(y)).filter((h: Holiday) => h.date >= from && h.date <= to)
     .map((h): CalEvent => ({ date: h.date, kind: h.optional ? 'optional' : 'holiday', label: h.name + (h.optional ? ' (ponto facultativo)' : '') }));
   const bd = bdays.flatMap((b) => years.map((y) => nextBirthday(b, `${y}-01-01`)).filter((d) => d >= from && d <= to)
     .map((d): CalEvent => ({ date: d, kind: 'birthday', label: b.name })));
   const ap = appts.filter((a) => a.date >= from && a.date <= to).map((a): CalEvent => ({ date: a.date, kind: 'appointment', label: apptLabel(a), appt: a }));
-  const order = { holiday: 0, optional: 1, appointment: 2, birthday: 3 };
-  return [...hol, ...ap, ...bd].sort((a, b) => a.date.localeCompare(b.date) || order[a.kind] - order[b.kind] || (a.appt?.time ?? '').localeCompare(b.appt?.time ?? ''));
+  const mt = extra.filter((e) => e.date >= from && e.date <= to);
+  const order = { holiday: 0, optional: 1, maintenance: 2, appointment: 3, birthday: 4 };
+  return [...hol, ...mt, ...ap, ...bd].sort((a, b) => a.date.localeCompare(b.date) || order[a.kind] - order[b.kind] || (a.appt?.time ?? '').localeCompare(b.appt?.time ?? ''));
 }
 
 /** Próximos eventos a partir de hoje (para o Início e a lista ao lado do calendário). */
-export function upcoming(bdays: Birthday[], days: number, today = todayIso(), appts: Appointment[] = []) {
-  return eventsBetween(today, plusDays(today, days), bdays, appts);
+export function upcoming(bdays: Birthday[], days: number, today = todayIso(), appts: Appointment[] = [], extra: CalEvent[] = []) {
+  return eventsBetween(today, plusDays(today, days), bdays, appts, extra);
 }
 
 const whenLabel = (date: string, today: string) => {
@@ -64,14 +78,15 @@ export default function Calendario() {
   const [day, setDay] = useState<string | null>(null);
   const aq = useAppointments(first < today ? first : today, last > plusDays(today, 60) ? last : plusDays(today, 60));
   const appts = aq.data ?? [];
-  const events = useMemo(() => eventsBetween(first, last, bdays, appts), [first, last, bdays, appts]);
+  const maint = useMaintEvents(today);
+  const events = useMemo(() => eventsBetween(first, last, bdays, appts, maint), [first, last, bdays, appts, maint]);
   const byDay = new Map<string, CalEvent[]>();
   events.forEach((e) => byDay.set(e.date, [...(byDay.get(e.date) ?? []), e]));
   const cells: (string | null)[] = [...Array(weekday(first)).fill(null)];
   for (let d = 1; d <= +last.slice(8); d++) cells.push(`${ym.y}-${pad(ym.m)}-${pad(d)}`);
   while (cells.length % 7) cells.push(null);
   const move = (n: number) => setYm(({ y, m }) => { const t = (y * 12 + m - 1) + n; return { y: Math.floor(t / 12), m: (t % 12) + 1 }; });
-  const next = upcoming(bdays, 60, today, appts);
+  const next = upcoming(bdays, 60, today, appts, maint);
   return (
     <>
       <Header title="Calendário" sub="Feriados nacionais, aniversários da equipe e seus compromissos. Clique num dia para marcar um compromisso." />
@@ -94,25 +109,25 @@ export default function Calendario() {
                   onClick={d ? () => setDay(d) : undefined} role={d ? 'button' : undefined} tabIndex={d ? 0 : undefined} onKeyDown={d ? (e) => e.key === 'Enter' && setDay(d) : undefined}
                   aria-label={d ? `Dia ${+d.slice(8)}: ver ou marcar compromisso` : undefined}>
                   {d && <><span className="cal-n">{+d.slice(8)}</span>
-                    {ev.map((e, k) => <span key={k} className={'cal-ev ' + e.kind} title={e.label}>{e.kind === 'birthday' ? '🎂 ' + e.label.split(' ')[0] : e.kind === 'appointment' ? '🕑 ' + e.label : e.label.replace(' (ponto facultativo)', '')}</span>)}</>}
+                    {ev.map((e, k) => <span key={k} className={'cal-ev ' + e.kind} title={e.label}>{e.kind === 'birthday' ? '🎂 ' + e.label.split(' ')[0] : e.kind === 'appointment' ? '🕑 ' + e.label : e.kind === 'maintenance' ? '🔧 ' + e.label : e.label.replace(' (ponto facultativo)', '')}</span>)}</>}
                 </div>
               );
             })}
           </div>
-          <p className="note"><span className="cal-key holiday" /> feriado nacional · <span className="cal-key optional" /> ponto facultativo · 🎂 aniversário · 🕑 compromisso. Feriados estaduais e municipais não aparecem.</p>
+          <p className="note"><span className="cal-key holiday" /> feriado nacional · <span className="cal-key optional" /> ponto facultativo · 🎂 aniversário · 🕑 compromisso · 🔧 revisão prevista. Feriados estaduais e municipais não aparecem.</p>
         </div>
         <div>
           <h2 style={{ marginTop: 0 }}>Próximos 60 dias</h2>
           <div className="panel">
             {next.length ? next.map((e, i) => (
-              <div key={i} className="cal-next"><span className={'cal-when' + (e.date === today ? ' now' : '')}>{whenLabel(e.date, today)}</span>
-                <span>{e.kind === 'birthday' ? '🎂 ' + e.label : e.kind === 'appointment' ? <button className="linkish" onClick={() => setDay(e.date)}>🕑 {e.label}</button> : e.label}</span></div>
+              <div key={i} className={'cal-next k-' + e.kind}><span className={'cal-when' + (e.date === today ? ' now' : '')}>{whenLabel(e.date, today)}</span>
+                <span className={e.late ? 'late' : undefined}>{e.kind === 'birthday' ? '🎂 ' + e.label : e.kind === 'maintenance' ? <Link className="linkish" to="/frota/manutencao">🔧 {e.label}</Link> : e.kind === 'appointment' ? <button className="linkish" onClick={() => setDay(e.date)}>🕑 {e.label}</button> : e.label}</span></div>
             )) : <p className="note">Nada nos próximos 60 dias.</p>}
           </div>
           {can(...WRITE) && <BirthdayAdmin list={bdays} />}
         </div>
       </div>
-      {day && <DayDialog date={day} events={eventsBetween(day, day, bdays, appts)} onClose={() => setDay(null)} />}
+      {day && <DayDialog date={day} events={eventsBetween(day, day, bdays, appts, maint)} onClose={() => setDay(null)} />}
     </>
   );
 }
@@ -194,8 +209,9 @@ export function MiniCalendar() {
   const last = `${ym.y}-${pad(ym.m)}-${pad(new Date(Date.UTC(ym.y, ym.m, 0)).getUTCDate())}`;
   const aq = useAppointments(first < today ? first : today, last > plusDays(today, 60) ? last : plusDays(today, 60));
   const appts = aq.data ?? [];
+  const maint = useMaintEvents(today);
   const byDay = new Map<string, CalEvent[]>();
-  eventsBetween(first, last, bdays, appts).forEach((e) => byDay.set(e.date, [...(byDay.get(e.date) ?? []), e]));
+  eventsBetween(first, last, bdays, appts, maint).forEach((e) => byDay.set(e.date, [...(byDay.get(e.date) ?? []), e]));
   const cells: (string | null)[] = [...Array(weekday(first)).fill(null)];
   for (let d = 1; d <= +last.slice(8); d++) cells.push(`${ym.y}-${pad(ym.m)}-${pad(d)}`);
   const move = (n: number) => setYm(({ y, m }) => { const t = (y * 12 + m - 1) + n; return { y: Math.floor(t / 12), m: (t % 12) + 1 }; });
@@ -220,28 +236,32 @@ export function MiniCalendar() {
             const cls = ev.some((e) => e.kind === 'holiday') ? ' hol' : ev.some((e) => e.kind === 'optional') ? ' opt' : '';
             if (!d) return <span key={i} />;
             return <button key={i} type="button" onClick={() => setDay(d)}
-              className={'mini-day' + cls + (d === today ? ' today' : '') + (ev.some((e) => e.kind === 'birthday') ? ' bday' : '') + (ev.some((e) => e.kind === 'appointment') ? ' appt' : '')}
-              title={ev.map((e) => (e.kind === 'birthday' ? '🎂 ' : e.kind === 'appointment' ? '🕑 ' : '') + e.label).join('\n') || 'Marcar compromisso'}>{+d.slice(8)}</button>;
+              className={'mini-day' + cls + (d === today ? ' today' : '') + (ev.some((e) => e.kind === 'birthday') ? ' bday' : '') + (ev.some((e) => e.kind === 'appointment') ? ' appt' : '') + (ev.some((e) => e.kind === 'maintenance') ? ' maint' : '')}
+              title={ev.map((e) => (e.kind === 'birthday' ? '🎂 ' : e.kind === 'appointment' ? '🕑 ' : e.kind === 'maintenance' ? '🔧 ' : '') + e.label).join('\n') || 'Marcar compromisso'}>{+d.slice(8)}</button>;
           })}
         </div>
-        <p className="note mini-key"><span className="cal-key holiday" /> feriado · <span className="cal-key optional" /> facultativo · <span className="mini-dot" /> aniversário · <span className="mini-dot appt" /> compromisso</p>
+        <p className="note mini-key"><span className="cal-key holiday" /> feriado · <span className="cal-key optional" /> facultativo · <span className="mini-dot" /> aniversário · <span className="mini-dot appt" /> compromisso · 🔧 revisão</p>
         <p className="note" style={{ margin: '0 0 4px' }}>Clique num dia para marcar um compromisso.</p>
+        {(() => { const nm = upcoming([], 30, today, [], maint).filter((e) => e.kind === 'maintenance').slice(0, 4); return nm.length > 0 && <>
+          <h3 className="mini-h">Próximas revisões</h3>
+          {nm.map((e, i) => <div key={i} className={'cal-next k-' + e.kind}><span className={'cal-when' + (e.late ? ' late' : e.date === today ? ' now' : '')}>{e.late ? 'Vencida' : whenLabel(e.date, today)}</span><Link className="linkish" to="/frota/manutencao">🔧 {e.label.replace(' (vencida)', '')}</Link></div>)}
+        </>; })()}
         {nextAppts.length > 0 && <>
           <h3 className="mini-h">Próximos compromissos</h3>
           {nextAppts.map((e, i) => (
-            <div key={i} className="cal-next"><span className={'cal-when' + (e.date === today ? ' now' : '')}>{whenLabel(e.date, today)}</span>
+            <div key={i} className={'cal-next k-' + e.kind}><span className={'cal-when' + (e.date === today ? ' now' : '')}>{whenLabel(e.date, today)}</span>
               <button className="linkish" onClick={() => setDay(e.date)}>🕑 {e.label}</button></div>
           ))}
         </>}
         <h3 className="mini-h">Próximos aniversários</h3>
         {nextBdays.length ? nextBdays.map((e, i) => (
-          <div key={i} className="cal-next"><span className={'cal-when' + (e.date === today ? ' now' : '')}>{whenLabel(e.date, today)}</span><span>🎂 {firstNames(e.label)}</span></div>
+          <div key={i} className={'cal-next k-' + e.kind}><span className={'cal-when' + (e.date === today ? ' now' : '')}>{whenLabel(e.date, today)}</span><span>🎂 {firstNames(e.label)}</span></div>
         )) : <p className="note">{q.isLoading ? 'Carregando…' : 'Nenhum aniversário cadastrado.'}</p>}
         {nextHol && <h3 className="mini-h">Próximo feriado</h3>}
-        {nextHol && <div className="cal-next"><span className={'cal-when' + (nextHol.date === today ? ' now' : '')}>{whenLabel(nextHol.date, today)}</span><span>📅 {nextHol.label}</span></div>}
+        {nextHol && <div className={'cal-next k-' + nextHol.kind}><span className={'cal-when' + (nextHol.date === today ? ' now' : '')}>{whenLabel(nextHol.date, today)}</span><span>📅 {nextHol.label}</span></div>}
         <Link className="btn sm" to="/calendario" style={{ marginTop: 10 }}>Abrir calendário</Link>
       </div>
-      {day && <DayDialog date={day} events={eventsBetween(day, day, bdays, appts)} onClose={() => setDay(null)} />}
+      {day && <DayDialog date={day} events={eventsBetween(day, day, bdays, appts, maint)} onClose={() => setDay(null)} />}
     </div>
   );
 }
@@ -282,7 +302,7 @@ function DayDialog({ date, events, onClose }: { date: string; events: CalEvent[]
               🕑 {ev.label}{ev.appt.shared && <span className="chip">👥 equipe</span>}{!ev.appt.mine && <span className="note"> · {ev.appt.owner}</span>}
               {ev.appt.notes && <span className="task-details">↳ {ev.appt.notes}</span>}
             </button>
-          : <div key={i} className={'day-item ' + ev.kind}>{ev.kind === 'birthday' ? '🎂 Aniversário: ' + ev.label : '📅 ' + ev.label}</div>
+          : <div key={i} className={'day-item ' + ev.kind + (ev.late ? ' late' : '')}>{ev.kind === 'birthday' ? '🎂 Aniversário: ' + ev.label : ev.kind === 'maintenance' ? <Link to="/frota/manutencao">🔧 Revisão: {ev.label}</Link> : '📅 ' + ev.label}</div>
       ))}</div> : <p className="note">Nada marcado neste dia.</p>}
       <form onSubmit={save} className="day-form">
         <h4>{edit.id ? 'Editar compromisso' : 'Novo compromisso'}</h4>

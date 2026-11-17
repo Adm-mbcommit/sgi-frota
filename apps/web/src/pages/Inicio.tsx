@@ -9,12 +9,14 @@ import { Header } from '../components/ui';
 import { MODULES, type AppModule } from '../modules';
 import { dueInfo, useMyTasks } from './Tarefas';
 import { CalendarSummary } from './Calendario';
+import { MaintenanceSummary } from './Manutencao';
 
 export default function Inicio() {
   const { me } = useAuth();
   return (
     <>
       <Header title={`Olá, ${me?.user.name.split(' ')[0] ?? ''}`} sub="SGI Matias Brasil · escolha um setor." />
+      <MaintenanceSummary />
       <CalendarSummary />
       <MyTasksSummary />
       <div className="cards">{MODULES.map((m) => <ModuleCard key={m.id} m={m} />)}</div>

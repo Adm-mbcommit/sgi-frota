@@ -6,8 +6,12 @@
 export interface FleetConfig {
   /** Nome da empresa cujos registros entram nos cálculos (os formulários registram também outras). */
   empresa: string;
-  /** Alerta de manutenção quando faltar este km ou menos. */
+  /** Alerta de manutenção quando faltar este km ou menos (1º aviso: agendar). */
   kmAlert: number;
+  /** 2º aviso de manutenção: faltam este km ou menos (confirmar agendamento). */
+  kmAlert2: number;
+  /** 3º aviso de manutenção: faltam este km ou menos (urgente). */
+  kmAlert3: number;
   /** Alerta de manutenção quando faltar este número de dias ou menos (por data ou pela previsão de uso). */
   dayAlert: number;
   /** Antecedência, em dias, para alertar documentos e CNH. */
@@ -39,6 +43,8 @@ export interface FleetConfig {
 export const DEFAULT_CONFIG: FleetConfig = {
   empresa: 'Matias Brasil',
   kmAlert: 1500,
+  kmAlert2: 1000,
+  kmAlert3: 500,
   dayAlert: 30,
   docDays: 60,
   speed: 100,
