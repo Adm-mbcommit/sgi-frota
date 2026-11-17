@@ -18,6 +18,7 @@ import { importComandoBordo } from '../importers/comando-bordo.js';
 import { ChronosFormatError, importChronos, mapChronos } from '../importers/chronos.js';
 import { loadResolver } from '../services/resolver.js';
 import { importGestao } from '../importers/gestao.js';
+import { importMaisControle } from '../importers/maiscontrole.js';
 import { audit } from '../services/audit.js';
 
 async function upload(req: FastifyRequest) {
@@ -106,6 +107,17 @@ export default async function importRoutes(app: FastifyInstance) {
     const stats = await importGestao(db, req.user.org, req.user.sub, R, wb);
     const [imp] = await db.insert(imports).values({ organizationId: req.user.org, kind: 'GESTAO_FROTA', fileName: name, stats, userId: req.user.sub }).returning();
     await audit(db, req, 'import', 'gestao_frota', imp.id, stats);
+    return { id: imp.id, ...stats };
+  });
+
+  /** Relatório "Pagamentos" do Mais Controle (financeiro): custos da Frota, sem combustível. */
+  app.post('/imports/mais-controle', write, async (req) => {
+    const { name, wb } = await upload(req);
+    let stats;
+    try { stats = await importMaisControle(db, req.user.org, req.user.sub, wb); }
+    catch (e) { if (e instanceof Error && /Mais Controle/.test(e.message)) throw new HttpError(400, 'format', e.message); throw e; }
+    const [imp] = await db.insert(imports).values({ organizationId: req.user.org, kind: 'MAIS_CONTROLE', fileName: name, stats, userId: req.user.sub }).returning();
+    await audit(db, req, 'import', 'mais_controle', imp.id, { ...stats, replaced: stats.replaced.length });
     return { id: imp.id, ...stats };
   });
 

@@ -323,4 +323,32 @@ d('API', () => {
     await call('PUT', `/documents/${vehicleId}`, admin, { ...body, links: { crlv: '' } });
     expect((await call('GET', '/documents', admin)).json().find((x: { vehicleId: string }) => x.vehicleId === vehicleId).links.crlv).toBeUndefined();
   });
+  it('importa os pagamentos do Mais Controle: sem combustível, sem duplicar e substituindo o mesmo serviço lançado antes', async () => {
+    const legacy = (await call('POST', '/costs', admin, { date: '2026-09-04', vehicleId, category: 'Manutenção', description: '4ª REVISÃO', supplier: 'VIASERRA', amount: 2700 })).json();
+    const legacy2 = (await call('POST', '/costs', admin, { date: '2026-09-04', vehicleId, category: 'Manutenção', description: 'Peças da revisão', supplier: 'VIASERRA', amount: null })).json();
+    const plan = (await call('GET', '/maintenance/plan', admin)).json().find((p: { vehicleId: string }) => p.vehicleId === vehicleId);
+    const rec = (await call('POST', `/maintenance/plan/${plan.id}/records`, admin, { km: 40264, date: '2026-09-04', costId: legacy.id })).json();
+    const wb = new ExcelJS.Workbook(); const ws = wb.addWorksheet('Pagamentos');
+    ws.addRow(['Índice', 'Data de Competência', 'Data de Vencimento', 'Data de Pagamento', 'Valor da Parcela', 'Valor em Aberto', 'Valor Pago da Parcela', 'Juros / Multas', 'Descontos', 'Valor Total Pago', 'Fornecedor', 'CNPJ / CPF do Fornecedor', 'Dados Bancários do Fornecedor', 'Descrição', 'Número do Documento', 'Categoria']);
+    ws.addRow(['1', '04/09/2026', '08/10/2026', '08/10/2026', 1350, 0, 1350, 0, 0, 1350, 'Auto Elite Ltda', '', null, 'Revisao TPR0F55 - Saveiro', '188863', 'Frota']);
+    ws.addRow(['2', '04/09/2026', '10/11/2026', '', 1350, 1350, 0, 0, 0, 0, 'Auto Elite Ltda', '', null, 'Revisao TPR0F55 - Saveiro', '188863', 'Frota']);
+    ws.addRow(['3', '07/10/2026', '11/12/2026', '', 231.61, 231.61, 0, 0, 0, 0, 'Posto Elefantinho', '', null, 'Combustível Placa TPR0F55 Saveiro', '218309', 'Frota']);
+    ws.addRow(['4', '22/10/2026', '', '', 8.7, 8.7, 0, 0, 0, 0, 'Planalto Sul', '', null, 'Pedágio', 'Não tem NF', 'Frota']);
+    const boundary = '----mc';
+    const payload = Buffer.concat([
+      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="Pagamentos.xlsx"\r\nContent-Type: application/octet-stream\r\n\r\n`),
+      Buffer.from(await wb.xlsx.writeBuffer()), Buffer.from(`\r\n--${boundary}--\r\n`)]);
+    const up = () => app.inject({ method: 'POST', url: '/api/v1/imports/mais-controle', headers: { authorization: 'Bearer ' + admin, 'content-type': `multipart/form-data; boundary=${boundary}` }, payload });
+    const r1 = (await up()).json();
+    expect(r1).toMatchObject({ read: 3, created: 3, skippedFuel: 1, withoutVehicle: 1 });
+    expect(r1.replaced.map((x: { description: string }) => x.description).sort()).toEqual(['4ª REVISÃO', 'Peças da revisão']);
+    const all = (await call('GET', '/costs', admin)).json();
+    expect(all.some((c: { id: string }) => c.id === legacy.id || c.id === legacy2.id)).toBe(false);
+    const mc = all.filter((c: { invoice: string }) => c.invoice === '188863');
+    expect(mc.map((c: { amount: number }) => c.amount)).toEqual([1350, 1350]);
+    const recs = (await call('GET', '/maintenance/records', admin)).json();
+    expect(mc.map((c: { id: string }) => c.id)).toContain(recs.find((x: { id: string }) => x.id === rec.id).costId);
+    const r2 = (await up()).json();
+    expect(r2).toMatchObject({ created: 0, existing: 3, replaced: [] });
+  });
 });

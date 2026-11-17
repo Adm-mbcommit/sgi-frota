@@ -84,6 +84,18 @@ tira o CONFIRMAR e, se houver valor, lança o custo em Custos.
 - As revisões previstas aparecem no Calendário (🔧; vencidas no dia de hoje) e o Início mostra vencidas, perto de
   vencer e para conferir.
 
+## Custos vindos do Mais Controle
+
+`@sgi/core` → `maiscontrole.ts` + `importers/maiscontrole.ts` (Importações → Mais Controle):
+- Relatório **Pagamentos** (Excel). Só a categoria Frota; **combustível fica de fora** (já vem do Comando de Bordo).
+- Uma linha de custo por **parcela**, na data de competência; reimportar não duplica (`costs.external_key`).
+- Veículo pela placa (inclusive erros como QIX9C75/MFS7392) ou pelo nome ("Saveiro 21", "Uno", "saveiro obras" = 55,
+  "saveiro escritório" = 75). Sem veículo identificado (pedágio, seguro de mais de um carro) = custo da frota.
+- Categoria pelo texto (revisão → Manutenção; conserto/vidro/lâmpada → Conserto; seguro, IPVA, pedágio, lavação…).
+- Custos de outra fonte que são o **mesmo serviço** (mesmo veículo, até 3 dias, mesmo total ou ambos de manutenção)
+  são substituídos; o histórico de manutenção passa a apontar para o custo do Mais Controle.
+- Revisões com número na descrição ("2ª revisão") sugerem km = número × 10.000 ao lançar no plano.
+
 ## Documentos e CNH
 
 Próximo vencimento = menor data entre CRLV, IPVA, licenciamento e seguro.

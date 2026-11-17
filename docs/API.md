@@ -73,4 +73,5 @@ Feriados nacionais são calculados no front (`nationalHolidays` do `@sgi/core`, 
 | POST | /maintenance/plan/:id/records | ADMIN, GESTOR | aceita `costId` (liga a um custo existente); responde `updatedPlan` (false = serviço mais antigo, só histórico) |
 | POST | /imports/gestao-frota | ADMIN, GESTOR | .xlsx "Gestão Frota MATIAS" (abas Manutencoes e Custos); reimportação segura |
 | GET / PUT | /documents/:vehicleId | todos / ADMIN, GESTOR | Datas dos documentos e `links` dos PDFs `{crlv, ipva, licensing, insurance}` (https; vazio apaga) |
+| POST | /imports/mais-controle | ADMIN, GESTOR | .xlsx "Pagamentos" do Mais Controle: custos da Frota (sem combustível), uma linha por parcela (`external_key`), substitui o mesmo serviço lançado antes por outra fonte |
 

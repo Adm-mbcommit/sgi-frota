@@ -21,7 +21,7 @@ const money = (name: string) => numeric(name, { precision: 12, scale: 2, mode: '
 
 export const roleEnum = pgEnum('role', ['ADMIN', 'GESTOR', 'MOTORISTA', 'LEITOR']);
 export const vehicleStatusEnum = pgEnum('vehicle_status', ['ATIVO', 'PARALISADO', 'INATIVO']);
-export const sourceEnum = pgEnum('record_source', ['LEGADO', 'COMANDO_BORDO', 'CHRONOS', 'SGI']);
+export const sourceEnum = pgEnum('record_source', ['LEGADO', 'COMANDO_BORDO', 'CHRONOS', 'SGI', 'MAIS_CONTROLE']);
 export const taskStatusEnum = pgEnum('task_status', ['ABERTO', 'RESOLVIDO', 'SUGESTAO']);
 
 /* ---------- empresa, usuários, configuração ---------- */
@@ -260,10 +260,12 @@ export const costs = pgTable('costs', {
   invoice: text('invoice'),
   notes: text('notes'),
   source: sourceEnum('source').notNull().default('SGI'),
+  /** Chave da parcela no relatório do Mais Controle (reimportar não duplica). */
+  externalKey: text('external_key'),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
-}, (t) => [index('costs_org_date_idx').on(t.organizationId, t.date)]);
+}, (t) => [index('costs_org_date_idx').on(t.organizationId, t.date), uniqueIndex('costs_org_ext_uq').on(t.organizationId, t.externalKey)]);
 
 export const tasks = pgTable('tasks', {
   id: id(),
