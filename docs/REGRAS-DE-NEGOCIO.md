@@ -74,7 +74,8 @@ tira o CONFIRMAR e, se houver valor, lança o custo em Custos.
   sugestão; o km é estimado pelas viagens do dia (`kmOnDate`). "Lançar no plano" grava no histórico ligado ao custo
   (sem duplicar o valor); "Não é revisão" tira da lista.
 - Um serviço lançado só recomeça o prazo do item se for **mais recente** que o último registrado; senão fica só no histórico.
-- **Planilha Gestão Frota** (`POST /imports/gestao-frota`, botão em Manutenção): a aba *Manutencoes* traz o km da
+- **Planilha Gestão Frota** — deixou de ser usada em 17/11/2026; os dados dela já foram gravados (migração 0006). O botão
+  de importação continua disponível (`POST /imports/gestao-frota`, em Manutenção): a aba *Manutencoes* traz o km da
   **próxima revisão** de cada veículo, que vira a base dos itens de revisão do plano (Revisão geral, Troca do óleo,
   Filtro do óleo: último km = próxima − intervalo; data = a da linha ou a revisão mais recente da aba *Custos*).
   A aba *Custos* entra em Custos sem duplicar (veículo, data e descrição) e as revisões viram registros no histórico.

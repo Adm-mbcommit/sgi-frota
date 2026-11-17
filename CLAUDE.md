@@ -64,6 +64,12 @@ ADMIN (tudo, usuários, parâmetros, auditoria) · GESTOR (cadastros, manutenç�
 MOTORISTA (só as próprias viagens/abastecimentos) · LEITOR (consulta). Use `app.requireRole(...)` nas rotas
 e `can(...)` no front.
 
+## Fontes de dados
+
+- O **SGI é o sistema oficial** da frota. A planilha "Gestão Frota MATIAS" deixou de ser usada (17/11/2026); os dados úteis
+  dela foram gravados pela migração `0006_dados_planilha_gestao` (base das revisões, histórico, modelos).
+- Continua entrando sozinho: Comando de Bordo (sincronização) e Chronos (importação manual).
+
 ## Próximos passos (docs/ROADMAP.md)
 
 Não proponha app do motorista: o usuário decidiu manter o formulário do Comando de Bordo.
