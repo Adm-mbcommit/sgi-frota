@@ -78,16 +78,29 @@ export function Motoristas() {
   );
 }
 
+const DOC_KINDS: [string, string][] = [['crlv', 'CRLV'], ['ipva', 'IPVA'], ['licensing', 'Licenciamento'], ['insurance', 'Seguro (apólice)']];
+
+/** Botões que abrem os PDFs dos documentos (Google Drive) em outra aba. */
+function DocLinks({ links }: { links?: Record<string, string> }) {
+  const has = DOC_KINDS.filter(([k]) => links?.[k]);
+  if (!has.length) return <span className="note">—</span>;
+  return <span className="doc-links">{has.map(([k, label]) => (
+    <a key={k} className="btn sm doc-link" href={links![k]} target="_blank" rel="noopener noreferrer" title={`Abrir o PDF do ${label}`}>📄 {label.split(' ')[0]}</a>
+  ))}</span>;
+}
+
 export function Documentos() {
   const { can } = useAuth(); const qc = useQueryClient();
   const q = useQuery({ queryKey: ['documents'], queryFn: () => api<Docs[]>('/documents') });
   const [edit, setEdit] = useState<Docs | null>(null);
   return (
     <>
-      <Header title="Documentos dos veículos" sub="Marque como conferido depois de informar as datas reais. As datas iniciais vieram da planilha antiga e eram provisórias." />
+      <Header title="Documentos dos veículos" sub="Clique em 📄 para abrir o PDF do documento (fica no Google Drive da empresa). Marque como conferido depois de informar as datas reais." />
       <Loading q={q} />
       {q.data && <DataTable rows={q.data} cols={[
-        { h: 'Veículo', v: (r) => r.vehicleName }, { h: 'CRLV', v: (r) => r.crlv, f: (r) => fd(r.crlv) }, { h: 'IPVA', v: (r) => r.ipva, f: (r) => fd(r.ipva) },
+        { h: 'Veículo', v: (r) => r.vehicleName },
+        { h: 'Arquivos', v: (r) => Object.keys(r.links ?? {}).length, f: (r) => <DocLinks links={r.links} /> },
+        { h: 'CRLV', v: (r) => r.crlv, f: (r) => fd(r.crlv) }, { h: 'IPVA', v: (r) => r.ipva, f: (r) => fd(r.ipva) },
         { h: 'Licenciamento', v: (r) => r.licensing, f: (r) => fd(r.licensing) }, { h: 'Seguro', v: (r) => r.insurance, f: (r) => fd(r.insurance) },
         { h: 'Próximo', v: (r) => r.next, f: (r) => fd(r.next) }, { h: 'Dias', v: (r) => r.days, n: true }, { h: 'Status', v: (r) => r.status, f: (r) => <Chip s={r.status} /> },
         { h: 'Dados', v: (r) => r.confirmed, f: (r) => <span className={'chip ' + (r.confirmed ? 'ok' : 'conf')}>{r.confirmed ? 'Conferido' : 'A confirmar'}</span> },
@@ -97,8 +110,11 @@ export function Documentos() {
         { name: 'crlv', label: 'CRLV', type: 'date', value: edit.crlv }, { name: 'ipva', label: 'IPVA', type: 'date', value: edit.ipva },
         { name: 'licensing', label: 'Licenciamento', type: 'date', value: edit.licensing }, { name: 'insurance', label: 'Seguro', type: 'date', value: edit.insurance },
         { name: 'confirmed', label: 'Datas conferidas com o documento', type: 'check', value: edit.confirmed },
+        { name: 'linksInfo', label: 'Links dos PDFs: no Google Drive, abra o arquivo, clique em ⋮ → Compartilhar → Copiar link e cole aqui. Deixe vazio para tirar o link.', type: 'info' },
+        ...DOC_KINDS.map(([k, label]) => ({ name: 'link_' + k, label: `Link do PDF: ${label}`, value: edit.links?.[k] ?? '' })),
       ]} onSave={async (o) => {
-        await api(`/documents/${edit.vehicleId}`, { method: 'PUT', json: { crlv: nn(o.crlv), ipva: nn(o.ipva), licensing: nn(o.licensing), insurance: nn(o.insurance), confirmed: o.confirmed } });
+        const links = Object.fromEntries(DOC_KINDS.map(([k]) => [k, String(o['link_' + k] ?? '').trim()]));
+        await api(`/documents/${edit.vehicleId}`, { method: 'PUT', json: { crlv: nn(o.crlv), ipva: nn(o.ipva), licensing: nn(o.licensing), insurance: nn(o.insurance), confirmed: o.confirmed, links } });
         await qc.invalidateQueries();
       }} />}
     </>
