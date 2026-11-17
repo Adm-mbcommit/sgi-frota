@@ -46,6 +46,12 @@ export function dateText(g: { dueDate: string | null; daysLeft: number | null })
   const d = g.daysLeft ?? 0;
   return d < 0 ? `Venceu em ${fd(g.dueDate)} (há ${nf(-d)} dias)` : d === 0 ? `Vence hoje (${fd(g.dueDate)})` : `Até ${fd(g.dueDate)} (faltam ${nf(d)} dias)`;
 }
+/** "Última vez: 04/09/2026, km 40.264 · VIASERRA" (do item mais recente do grupo). */
+function lastText(items: PlanItem[]) {
+  const it = [...items].sort((a, b) => (b.lastDate ?? '').localeCompare(a.lastDate ?? ''))[0];
+  if (!it || (it.lastDate == null && it.lastKm == null)) return null;
+  return `Última vez: ${[it.lastDate && fd(it.lastDate), it.lastKm != null && `km ${nf(it.lastKm)}`].filter(Boolean).join(', ')}`;
+}
 const listItems = (items: string[]) => (items.length <= 3 ? items.join(', ') : `${items.slice(0, 3).join(', ')} e mais ${items.length - 3}`);
 
 export function MaintenanceDialog({ items, onClose }: { items: PlanItem[]; onClose: () => void }) {
@@ -173,6 +179,7 @@ function GroupCard({ g, plan, cfg, onRegister }: { g: DueGroup; plan: PlanItem[]
       <KmBadge kmLeft={g.kmLeft} cfg={cfg} />
       <div className="due-items">{listItems(g.items)}</div>
       <ul className="due-facts">
+        {lastText(items) && <li>🔧 {lastText(items)}</li>}
         {kmText(g) && <li>🛣️ {kmText(g)}</li>}
         {dateText(g) && <li>📅 {dateText(g)}</li>}
         {g.forecastDate && (g.kmLeft ?? 0) > 0 && <li>📈 Pelo ritmo de uso: chega ao km por volta de {fd(g.forecastDate)}</li>}
