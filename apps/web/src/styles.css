@@ -282,3 +282,7 @@ button.day-item.sel{outline:2px solid var(--accent)}
   .dr-months{flex-direction:column}.dr-months .dr-month:nth-child(1){display:none}
   .dr-grid{grid-template-columns:repeat(7,1fr)}
 }
+.hint-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 0;border-bottom:1px solid var(--line)}
+.hint-row:last-child{border-bottom:0}
+.hint-date{font-family:var(--mono);font-size:12px;color:var(--muted);width:84px;flex:none}
+.hint-main{flex:1;min-width:220px;display:flex;flex-direction:column;gap:2px}

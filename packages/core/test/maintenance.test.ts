@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { expectedDue, groupDue, type DueItem } from '../src/maintenance.js';
+import { expectedDue, groupDue, kmOnDate, type DueItem } from '../src/maintenance.js';
 
 const base = (o: Partial<DueItem>): DueItem => ({ plate: 'QXI9C75', item: 'Troca do óleo', status: 'OK', nextKm: 149126, kmLeft: 2415, dueDate: '2027-06-30', daysLeft: 226, forecastDays: 40.2, ...o });
 
@@ -21,5 +21,12 @@ describe('agenda de manutenção', () => {
       ['QXI9C75', 'OK', ['Pneus']],
     ]);
     expect(g[1].ids).toEqual(['a', 'b']);
+  });
+  it('estima o km do veículo numa data pelas viagens', () => {
+    const t = (d: string, a: number | null, b: number | null, valid = true) => ({ plate: 'TPR0F55', startedAt: Date.parse(d), kmStart: a, kmEnd: b, valid, startValid: valid });
+    const trips = [t('2026-09-03T10:00:00-03:00', 40100, 40200), t('2026-09-04T08:00:00-03:00', 40200, 40264), t('2026-09-04T15:00:00-03:00', 13899, 13900, false), t('2026-09-05T08:00:00-03:00', 40264, 40300)];
+    expect(kmOnDate(trips, 'TPR0F55', '2026-09-04')).toBe(40264);
+    expect(kmOnDate(trips, 'TPR0F55', '2026-09-01')).toBe(40100);
+    expect(kmOnDate(trips, 'XXX', '2026-09-04')).toBeNull();
   });
 });

@@ -67,6 +67,11 @@ tira o CONFIRMAR e, se houver valor, lança o custo em Custos.
 - Itens sem km/data da última vez (SEM DADO) não geram alerta; a tela de Manutenção lista esses itens e permite
   informar a última revisão de vários de uma vez. Também é possível copiar o plano de outro veículo
   (`POST /maintenance/plan/copy`).
+- **Serviços já feitos** (`GET /maintenance/hints`): custos da categoria Manutenção (tela Custos) e observações do
+  checklist dos motoristas que citam serviço, ainda sem registro no histórico. Custos do mesmo veículo e dia viram uma
+  sugestão; o km é estimado pelas viagens do dia (`kmOnDate`). "Lançar no plano" grava no histórico ligado ao custo
+  (sem duplicar o valor); "Não é revisão" tira da lista.
+- Um serviço lançado só recomeça o prazo do item se for **mais recente** que o último registrado; senão fica só no histórico.
 - As revisões previstas aparecem no Calendário (🔧; vencidas no dia de hoje) e o Início mostra vencidas, perto de
   vencer e para conferir.
 

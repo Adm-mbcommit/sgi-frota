@@ -259,4 +259,27 @@ d('API', () => {
     const plan = (await call('GET', '/maintenance/plan', admin)).json().filter((p: { vehicleId: string }) => p.vehicleId === v2.id);
     expect(plan[0]).toMatchObject({ lastKm: 220000, lastDate: '2026-08-01', nextKm: 230000 });
   });
+  it('serviços de Custos viram sugestão; lançar serviço antigo não mexe no prazo nem duplica o custo', async () => {
+    const plan = (await call('GET', '/maintenance/plan', admin)).json().filter((p: { vehicleId: string }) => p.vehicleId === vehicleId);
+    const item = plan[0];
+    const cost = (await call('POST', '/costs', admin, { date: '2020-03-10', vehicleId, category: 'Manutenção', description: '4ª REVISÃO ', supplier: 'VIASERRA', amount: 2700, invoice: 'NF 188863' })).json();
+    let hints = (await call('GET', '/maintenance/hints', reader)).json();
+    expect(hints).toContainEqual(expect.objectContaining({ source: 'custos', costId: cost.id, description: '4ª REVISÃO', supplier: 'VIASERRA', date: '2020-03-10' }));
+    const before = (await call('GET', '/costs', admin)).json().length;
+    const r = await call('POST', `/maintenance/plan/${item.id}/records`, admin, { km: 1000, date: '2020-03-10', supplier: 'VIASERRA', costId: cost.id });
+    expect(r.statusCode).toBe(201);
+    expect(r.json()).toMatchObject({ updatedPlan: false, costId: cost.id });
+    const after = (await call('GET', '/maintenance/plan', admin)).json().find((p: { id: string }) => p.id === item.id);
+    expect(after).toMatchObject({ lastKm: item.lastKm, lastDate: item.lastDate });
+    expect((await call('GET', '/costs', admin)).json()).toHaveLength(before);
+    hints = (await call('GET', '/maintenance/hints', admin)).json();
+    expect(hints.some((h: { costId: string }) => h.costId === cost.id)).toBe(false);
+    expect((await call('GET', '/maintenance/records', admin)).json().some((x: { date: string }) => x.date === '2020-03-10')).toBe(true);
+    const bat = (await call('POST', '/costs', admin, { date: '2020-06-01', vehicleId, category: 'Manutenção', description: 'Troca de bateria', amount: 399 })).json();
+    expect((await call('GET', '/maintenance/hints', admin)).json().some((h: { costId: string }) => h.costId === bat.id)).toBe(true);
+    expect((await call('POST', '/maintenance/hints/dismiss', reader, { key: 'c' + bat.id })).statusCode).toBe(403);
+    expect((await call('POST', '/maintenance/hints/dismiss', admin, { key: 'c' + bat.id })).statusCode).toBe(204);
+    expect((await call('GET', '/maintenance/hints', admin)).json().some((h: { costId: string }) => h.costId === bat.id)).toBe(false);
+    expect(JSON.stringify((await call('GET', '/settings', admin)).json())).not.toContain('maintHints');
+  });
 });

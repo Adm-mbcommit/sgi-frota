@@ -97,21 +97,51 @@ function CopyDialog({ to, vehicles, sources, onClose }: { to: Vehicle; vehicles:
   );
 }
 
-/** Informar km e data da última revisão de vários itens de uma vez (para os itens sem dados). */
-function LastServiceDialog({ items, onClose }: { items: PlanItem[]; onClose: () => void }) {
+export interface ServiceHint {
+  key: string; keys: string[]; source: 'custos' | 'checklist'; vehicleId: string; vehicleName: string; date: string; km: number | null; kmEstimated: boolean;
+  description: string; supplier: string | null; invoice: string | null; amount: number | null; costId: string | null;
+}
+interface ServiceRecord { id: string; vehicleName: string; item: string; km: number | null; date: string; supplier: string | null; invoice: string | null; notes: string | null }
+
+/** Quais itens do plano marcar de início, pela descrição do serviço (o usuário confere). */
+function guessItems(desc: string, items: PlanItem[]) {
+  const d = desc.toLowerCase();
+  const re = /revis/.test(d) ? /revis|[óo]leo|filtro/i : /[óo]leo|filtro/.test(d) ? /[óo]leo|filtro/i : /pneu/.test(d) ? /pneu|alinhamento|balanceamento/i : /freio|pastilha/.test(d) ? /freio|pastilha/i : null;
+  return new Set(re ? items.filter((i) => re.test(i.item)).map((i) => i.id) : []);
+}
+
+/**
+ * Lançar um serviço já feito (de Custos, do checklist ou informado agora): entra no histórico de cada item marcado.
+ * O prazo do item só recomeça se o serviço for mais recente que o último registrado.
+ */
+function ServiceDialog({ items, hint, allChecked, onClose }: { items: PlanItem[]; hint?: ServiceHint; allChecked?: boolean; onClose: () => void }) {
   const qc = useQueryClient();
+  const pre = hint ? guessItems(hint.description, items) : new Set<string>();
   return (
-    <FormDialog title={`Última revisão: ${items[0].vehicleName}`} onClose={onClose}
+    <FormDialog title={`Lançar serviço feito: ${items[0].vehicleName}`} onClose={onClose}
       fields={[
-        { name: 'lastKm', label: 'Km da última revisão', type: 'number', step: '1', required: true },
-        { name: 'lastDate', label: 'Data da última revisão', type: 'date', required: true },
-        ...items.map((it) => ({ name: 'it_' + it.id, label: `Foi feito: ${it.item}`, type: 'check' as const, value: true })),
+        ...(hint ? [{ name: 'info', label: `${hint.source === 'custos' ? 'Em Custos' : 'No checklist do motorista'}: ${hint.description}${hint.supplier ? ' · ' + hint.supplier : ''}${hint.invoice ? ' · ' + hint.invoice : ''}`, type: 'info' as const }] : []),
+        { name: 'date', label: 'Data do serviço', type: 'date', value: hint?.date, required: true },
+        { name: 'km', label: hint?.kmEstimated ? 'Km do veículo no serviço (estimado pelas viagens do dia: confira na NF)' : 'Km do veículo no serviço', type: 'number', step: '1', value: hint?.km, required: true },
+        { name: 'supplier', label: 'Oficina / fornecedor', value: hint?.supplier },
+        { name: 'invoice', label: 'Nota fiscal', value: hint?.invoice },
+        ...(hint?.costId ? [] : [{ name: 'amount', label: 'Valor total (R$) — lança em Custos (deixe vazio se já está lá)', type: 'number' as const, step: '0.01' }]),
+        { name: 'notes', label: 'Observação', value: hint && hint.source === 'checklist' ? hint.description : undefined },
+        ...items.map((it) => ({ name: 'it_' + it.id, label: `Foi feito: ${it.item}`, type: 'check' as const, value: allChecked || pre.has(it.id) })),
       ]}
       onSave={async (o) => {
         const chosen = items.filter((it) => o['it_' + it.id] === true);
-        if (!chosen.length) throw new Error('Marque pelo menos um item.');
-        for (const it of chosen) await api(`/maintenance/plan/${it.id}`, { method: 'PATCH', json: { lastKm: Number(o.lastKm), lastDate: o.lastDate, needsCheck: false } });
+        if (!chosen.length) throw new Error('Marque pelo menos um item que foi feito neste serviço.');
+        let updated = 0;
+        for (const [i, it] of chosen.entries()) {
+          const r = await api<{ updatedPlan: boolean }>(`/maintenance/plan/${it.id}/records`, { method: 'POST', json: {
+            km: Number(o.km), date: o.date, supplier: nn(o.supplier), invoice: nn(o.invoice), notes: nn(o.notes),
+            costId: hint?.costId ?? null, amount: !hint?.costId && i === 0 ? num(o.amount) : null } });
+          if (r.updatedPlan) updated++;
+        }
         await qc.invalidateQueries();
+        const old = chosen.length - updated;
+        if (old) alert(`${updated} item(ns) com o prazo recalculado. ${old} já tinha(m) um serviço mais recente registrado: o lançamento ficou só no histórico.`);
       }} />
   );
 }
@@ -141,7 +171,10 @@ export default function Manutencao() {
   const [reg, setReg] = useState<PlanItem[] | null>(null);
   const [edit, setEdit] = useState<Partial<PlanItem> | null>(null);
   const [copy, setCopy] = useState<Vehicle | null>(null);
-  const [fill, setFill] = useState<PlanItem[] | null>(null);
+  const [svc, setSvc] = useState<{ items: PlanItem[]; hint?: ServiceHint; all?: boolean } | null>(null);
+  const hq = useQuery({ queryKey: ['maint-hints'], queryFn: () => api<ServiceHint[]>('/maintenance/hints') });
+  const rq = useQuery({ queryKey: ['maint-records'], queryFn: () => api<ServiceRecord[]>('/maintenance/records') });
+  const itemsOf = (vehicleId: string) => plan.filter((p) => p.vehicleId === vehicleId);
   const plan = q.data ?? [];
   const vehicles = (vq.data ?? []).filter((v) => v.active && v.status !== 'INATIVO');
   const groups = dueGroups(plan);
@@ -166,6 +199,25 @@ export default function Manutencao() {
           ? <div className="due-grid">{alerts.map((g, i) => <GroupCard key={i} g={g} plan={plan} onRegister={write ? setReg : undefined} />)}</div>
           : <div className="banner ok-banner">Nenhuma revisão vencida ou perto de vencer. ✅</div>}
 
+        {(hq.data?.length ?? 0) > 0 && <>
+          <h2>🧾 Serviços já feitos para lançar no plano <span className="count-pill">{hq.data!.length}</span></h2>
+          <div className="panel">
+            <p className="note" style={{ marginTop: 0 }}>Serviços encontrados em <b>Custos</b> (categoria Manutenção) e nas observações do <b>checklist dos motoristas</b> que ainda não estão no histórico. Lance cada um e marque o que foi feito: assim o SGI conta os prazos a partir deles.</p>
+            {hq.data!.map((h) => (
+              <div key={h.key} className="hint-row">
+                <span className="hint-date">{fd(h.date)}</span>
+                <span className="hint-main"><b>{h.vehicleName}</b> · {h.description}
+                  <span className="note">{[h.supplier, h.invoice, h.km != null && `${h.kmEstimated ? '≈ ' : ''}${nf(h.km)} km`].filter(Boolean).join(' · ')}</span></span>
+                <span className={'chip ' + (h.source === 'custos' ? 'ok' : '')}>{h.source === 'custos' ? 'Custos' : 'Checklist do motorista'}</span>
+                {write && <span className="noplan-act">
+                  {itemsOf(h.vehicleId).length > 0 && <button className="btn sm pri" onClick={() => setSvc({ items: itemsOf(h.vehicleId), hint: h })}>Lançar no plano</button>}
+                  <button className="btn sm" title="Tirar da lista (ex.: troca de bateria, que não é item do plano)" onClick={async () => { for (const key of h.keys) await api('/maintenance/hints/dismiss', { method: 'POST', json: { key } }); await hq.refetch(); }}>Não é revisão</button>
+                </span>}
+              </div>
+            ))}
+          </div>
+        </>}
+
         {noPlan.length > 0 && <>
           <h2>🚫 Veículos sem plano de manutenção</h2>
           <div className="panel">
@@ -187,7 +239,7 @@ export default function Manutencao() {
             <p className="note" style={{ marginTop: 0 }}>Falta o km e a data da última vez que estes itens foram feitos. Informe a última revisão de cada veículo para o SGI passar a avisar.</p>
             {noData.map(({ v, items }) => (
               <div key={v.id} className="noplan-row"><b>{v.name}</b><span className="note">{items.length} ite{items.length > 1 ? 'ns' : 'm'}: {listItems(items.map((i) => i.item))}</span>
-                {write && <span className="noplan-act"><button className="btn sm pri" onClick={() => setFill(items)}>Informar última revisão</button></span>}
+                {write && <span className="noplan-act"><button className="btn sm pri" onClick={() => setSvc({ items, all: true })}>Informar última revisão</button></span>}
               </div>
             ))}
           </div>
@@ -195,15 +247,23 @@ export default function Manutencao() {
 
         <h2>🗓️ Próxima revisão de cada veículo</h2>
         <div className="tw"><table>
-          <thead><tr><th>Veículo</th><th>O quê</th><th>Por km</th><th>Por data</th><th>Data esperada</th><th>Situação</th></tr></thead>
+          <thead><tr><th>Veículo</th><th>O quê</th><th>Por km</th><th>Por data</th><th>Data esperada</th><th>Situação</th>{write && <th />}</tr></thead>
           <tbody>{nextByVehicle.map(({ v, g }) => (
             <tr key={v.id}><td>{v.name}{noData.some((x) => x.v.id === v.id) && <div className="note">❔ há itens sem dados</div>}</td>
               {g ? <><td className="wide">{listItems(g.items)}</td><td>{kmText(g) ?? '—'}</td><td>{dateText(g) ?? '—'}</td>
                 <td><b>{g.expectedDate ? fd(g.expectedDate) : '—'}</b>{g.by && <span className="note"> ({g.by === 'km' ? 'pelo km' : 'pela data'})</span>}</td><td><Chip s={g.status} /></td></>
                 : <td colSpan={5} className="note">Todos os itens precisam de conferência (veja os alertas).</td>}
+              {write && <td><button className="btn sm" onClick={() => setSvc({ items: itemsOf(v.id) })}>Lançar serviço anterior</button></td>}
             </tr>
           ))}</tbody>
         </table></div>
+
+        <details className="done-box"><summary>📜 Histórico de serviços ({rq.data?.length ?? 0})</summary>
+          {rq.data && <DataTable rows={rq.data} filter={{ label: 'Todos os veículos', v: (r) => r.vehicleName }} cols={[
+            { h: 'Data', v: (r) => r.date, f: (r) => fd(r.date) }, { h: 'Veículo', v: (r) => r.vehicleName }, { h: 'Item', v: (r) => r.item },
+            { h: 'Km', v: (r) => r.km, f: (r) => nf(r.km), n: true }, { h: 'Oficina', v: (r) => r.supplier }, { h: 'NF', v: (r) => r.invoice }, { h: 'Observação', v: (r) => r.notes, w: true },
+          ]} />}
+        </details>
 
         <details className="done-box"><summary>Todos os itens do plano ({plan.length}) — ver, editar ou registrar um item</summary>
         <DataTable rows={plan} filter={{ label: 'Todos os veículos', v: (r) => r.vehicleName }} cols={[
@@ -217,7 +277,7 @@ export default function Manutencao() {
         ]} />
         </details>
       </>}
-      {fill && <LastServiceDialog items={fill} onClose={() => setFill(null)} />}
+      {svc && <ServiceDialog items={svc.items} hint={svc.hint} allChecked={svc.all} onClose={() => setSvc(null)} />}
       {reg && <MaintenanceDialog items={reg} onClose={() => setReg(null)} />}
       {edit && <PlanDialog item={edit} vehicles={vehicles} onClose={() => setEdit(null)} />}
       {copy && <CopyDialog to={copy} vehicles={vehicles} sources={[...withPlan] as string[]} onClose={() => setCopy(null)} />}

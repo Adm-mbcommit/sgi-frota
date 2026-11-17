@@ -50,3 +50,18 @@ export function groupDue(items: DueItem[], today: string): DueGroup[] {
   return [...map.values()].sort((a, b) => RANK[a.status] - RANK[b.status]
     || (a.expectedDate ?? '9999').localeCompare(b.expectedDate ?? '9999') || (a.kmLeft ?? 1e12) - (b.kmLeft ?? 1e12));
 }
+
+/** Viagem mínima para estimar o hodômetro numa data. */
+export interface KmTrip { plate: string | null; startedAt: number; kmStart: number | null; kmEnd: number | null; valid: boolean; startValid: boolean }
+
+/**
+ * Km aproximado do veículo numa data (fim do dia, horário de Brasília), pelas viagens com km plausível:
+ * o km final da última viagem até esse dia; sem viagem antes, o km inicial da primeira depois.
+ */
+export function kmOnDate(trips: KmTrip[], plate: string, date: string): number | null {
+  const end = Date.parse(date + 'T23:59:59-03:00');
+  const ok = trips.filter((t) => t.plate === plate && (t.valid || t.startValid)).sort((a, b) => a.startedAt - b.startedAt);
+  const before = ok.filter((t) => t.startedAt <= end).pop();
+  if (before) return before.valid && before.kmEnd != null ? before.kmEnd : before.kmStart;
+  return ok.find((t) => t.startedAt > end)?.kmStart ?? null;
+}
