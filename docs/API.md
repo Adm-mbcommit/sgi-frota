@@ -71,6 +71,10 @@ Feriados nacionais são calculados no front (`nationalHolidays` do `@sgi/core`, 
 | PUT | /certificates | ADMIN, GESTOR | `{companyId, kind, issuedOn?, expiresOn?, alertDays?, link?, notes?}`; cria ou renova a certidão do tipo |
 | DELETE | /certificates/:id | ADMIN, GESTOR | |
 | POST / PATCH /:id | /companies | ADMIN, GESTOR | `{shortName, name, cnpj, driveFolder?, active?}`; CNPJ único por organização |
+| GET | /certificates/sync | ADMIN | `{configured, lastCheckAt, lastUpdateAt}` da leitura automática do Drive |
+| POST / DELETE | /certificates/sync/token | ADMIN | Gera (devolve `{token}` uma vez) ou apaga a chave; hash em `settings.certSyncTokenHash` |
+| GET | /certificates/sync/folders | chave `X-Sync-Token` | Pastas do Drive das empresas ativas `[{companyId, shortName, folderId}]` |
+| POST | /certificates/sync | chave `X-Sync-Token` | `{files: [{companyId, fileId, name, url}], contents?: {fileId: base64}}` → `{need, updated, unreadable}`; `need` = PDFs sem data no nome que a API quer ler |
 
 ## Manutenção (complemento)
 

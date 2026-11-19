@@ -41,6 +41,7 @@ O sistema passou a se chamar **SGI Matias Brasil**, com um módulo por setor. Fr
 - [x] Minhas tarefas (fora dos setores): caderno pessoal com Em andamento / A fazer / Aguardando / Feitas, pesquisa, pessoa, prazo e rotina diária; colar uma lista inteira de uma vez
 - [x] Calendário (fora dos setores): feriados nacionais calculados, aniversários da equipe (importa .xlsx), compromissos (clicar no dia; pessoais ou da equipe) e lembretes no Início
 - [x] Administrativo: Certidões (CNDs) da Matias 26 e da Matias 44, com quadro, alertas antes de vencer (menu, Início) e links dos PDFs no Drive
+- [x] Administrativo: leitura automática das CNDs na pasta do Drive (Apps Script diário, chave própria)
 - [ ] Administrativo: alerta das CNDs por e-mail; outros controles do setor (levantar com o usuário)
 - [ ] RH: levantar com o usuário o que o setor precisa
 - [ ] Permissões por módulo (quem vê cada setor)

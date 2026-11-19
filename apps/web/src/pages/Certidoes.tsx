@@ -7,7 +7,9 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import { fd } from '../lib/format';
+import { fd, fdt } from '../lib/format';
+import { apiUrl } from '../lib/api';
+import { certSyncScript } from '../lib/cert-sync-script';
 import { useAuth, WRITE } from '../lib/auth';
 import type { Certificate, CertificatesBoard, Company } from '../lib/types';
 import { Chip, DataTable, FormDialog, Header, Kpi, Loading, nn, num } from '../components/ui';
@@ -84,6 +86,8 @@ export default function Certidoes() {
           ))}</tbody>
         </table></div>
 
+        {can('ADMIN') && <DriveSyncPanel />}
+
         <h2>Por vencimento</h2>
         <DataTable rows={[...rows].sort((a, b) => (a.expiresOn ?? '9').localeCompare(b.expiresOn ?? '9'))} filter={{ label: 'Todas as empresas', v: (r) => r.company.shortName }} cols={[
           { h: 'Empresa', v: (r) => r.company.shortName }, { h: 'Certidão', v: (r) => r.label },
@@ -122,6 +126,54 @@ export default function Certidoes() {
         await qc.invalidateQueries({ queryKey: ['certificates'] });
       }} />}
     </>
+  );
+}
+
+/** Leitura automática das pastas do Drive (Apps Script + chave), só para o administrador. */
+function DriveSyncPanel() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ['cert-sync'], queryFn: () => api<{ configured: boolean; lastCheckAt: string | null; lastUpdateAt: string | null }>('/certificates/sync'), refetchInterval: 60_000 });
+  const [script, setScript] = useState(''); const [copied, setCopied] = useState(false); const [open, setOpen] = useState(false);
+  const d = q.data;
+  const generate = async () => {
+    if (d?.configured && !confirm('Gerar uma nova chave desliga o script atual até você colar o novo. Continuar?')) return;
+    const { token } = await api<{ token: string }>('/certificates/sync/token', { method: 'POST' });
+    setScript(certSyncScript(apiUrl('/certificates/sync'), token)); setCopied(false); setOpen(true);
+    await qc.invalidateQueries({ queryKey: ['cert-sync'] });
+  };
+  const disable = async () => {
+    if (!confirm('Desligar a leitura automática do Drive?')) return;
+    await api('/certificates/sync/token', { method: 'DELETE' }); setScript(''); await qc.invalidateQueries({ queryKey: ['cert-sync'] });
+  };
+  const copy = async () => { try { await navigator.clipboard.writeText(script); setCopied(true); } catch { setCopied(false); } };
+  return (
+    <div className="panel" style={{ marginTop: 14 }}>
+      <h3 style={{ marginTop: 0 }}>Leitura automática do Google Drive</h3>
+      <p className="note" style={{ marginTop: 0 }}>Todo dia às 7h o SGI lê as pastas das empresas (link 📁 de cada uma). Salvou uma CND nova na pasta com o nome no padrão
+        <b> CND FGTS - VAL 22.11.26.pdf</b>? A validade e o link são atualizados sozinhos. A certidão de falência pode ficar sem data no nome: o SGI lê a data de emissão dentro do PDF.
+        Um arquivo mais antigo nunca substitui uma certidão mais nova.</p>
+      {d && <p>{d.configured
+        ? <><span className="chip ok">Ligada</span> Última leitura: <b>{d.lastCheckAt ? fdt(d.lastCheckAt) : 'ainda nenhuma'}</b> · Última certidão atualizada: {d.lastUpdateAt ? fdt(d.lastUpdateAt) : 'ainda nenhuma'}</>
+        : <><span className="chip">Desligada</span> Clique em Ligar e siga os passos (uma vez só).</>}</p>}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <button className="btn pri" onClick={generate}>{d?.configured ? 'Gerar nova chave e script' : 'Ligar: gerar chave e script'}</button>
+        {d?.configured && <button className="btn" onClick={disable}>Desligar</button>}
+      </div>
+      {script && open && <>
+        <ol className="note" style={{ fontSize: 13, lineHeight: 1.6 }}>
+          <li>Clique em <b>Copiar script</b> (abaixo).</li>
+          <li>Abra <b>script.google.com</b> com uma conta Google que enxergue as pastas das empresas no Drive.</li>
+          <li>Clique em <b>Novo projeto</b> e dê o nome <b>SGI Certidões</b> (clique em "Projeto sem título", no alto).</li>
+          <li>Apague o texto de exemplo, cole o script e clique no ícone de <b>Salvar</b> (disquete).</li>
+          <li>Na barra de cima, escolha a função <b>instalarCertidoesSGI</b> e clique em <b>Executar</b>.</li>
+          <li>O Google vai pedir permissão: escolha sua conta → <b>Avançado</b> → <b>Acessar (não seguro)</b> → <b>Permitir</b>. (O aviso aparece porque o script é seu, não publicado.)</li>
+          <li>Pronto. Volte aqui e recarregue a página: a "Última leitura" deve mostrar o horário de agora.</li>
+        </ol>
+        <p className="banner">Esta chave aparece só agora. Não a compartilhe.</p>
+        <button className="btn pri" onClick={copy}>{copied ? 'Copiado!' : 'Copiar script'}</button>
+        <textarea readOnly value={script} rows={10} style={{ width: '100%', marginTop: 8, fontFamily: 'monospace', fontSize: 12 }} onFocus={(e) => e.target.select()} />
+      </>}
+    </div>
   );
 }
 

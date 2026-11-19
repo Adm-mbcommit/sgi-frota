@@ -5,7 +5,7 @@
  *   para POST /imports/comando-bordo/sync com o cabeçalho X-Sync-Token (chave gerada pelo ADMIN).
  *   A chave é guardada só como hash (sha256) em organizations.settings.syncTokenHash.
  */
-import { createHash, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type ExcelJS from 'exceljs';
 import { desc, eq, sql } from 'drizzle-orm';
@@ -20,6 +20,7 @@ import { loadResolver } from '../services/resolver.js';
 import { importGestao } from '../importers/gestao.js';
 import { importMaisControle } from '../importers/maiscontrole.js';
 import { audit } from '../services/audit.js';
+import { mergeSettings, sha256 } from '../services/settings.js';
 
 async function upload(req: FastifyRequest) {
   const file = await req.file();
@@ -34,13 +35,8 @@ function comandoBordoSheets(wb: ExcelJS.Workbook) {
   return { trips: get('Registros'), fuel: get('Abastecimentos'), check: sheetRows(wb, 'manutencao_diaria')?.slice(1) ?? [] };
 }
 
-const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
 const SYNC_KIND = 'COMANDO_BORDO';
 const SYNC_FILE = 'Sincronização automática (Google Planilhas)';
-
-/** Grava campos em organizations.settings sem sobrescrever os demais (merge no próprio banco). */
-const mergeSettings = (db: DB, orgId: string, patch: Record<string, unknown>) =>
-  db.update(organizations).set({ settings: sql`${organizations.settings} || ${JSON.stringify(patch)}::jsonb` }).where(eq(organizations.id, orgId));
 
 export default async function importRoutes(app: FastifyInstance) {
   const { db } = app;

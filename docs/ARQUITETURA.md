@@ -70,6 +70,13 @@ Instantes em `timestamptz` (UTC). Horários sem fuso vindos das planilhas são i
 America/Sao_Paulo. Vencimentos e datas de serviço são `date` (sem fuso). "Hoje" e os filtros de período
 usam o calendário de São Paulo.
 
+## Leitura automática das CNDs no Drive
+
+Mesmo modelo da sincronização da planilha, com chave própria (`settings.certSyncTokenHash`, gerada em
+Administrativo → Certidões → Leitura automática). O script (`apps/web/src/lib/cert-sync-script.ts`) roda todo dia às 7h:
+pede as pastas (`GET /certificates/sync/folders`), lista os PDFs e envia nome e link; se a API responder `need`, envia esses
+PDFs em base64 e a API lê o texto com `unpdf` (carregado só nessa hora). Só lê o Drive. Gravações entram no `audit_log` sem usuário.
+
 ## Sincronização automática com a planilha do Google
 
 Em vez de uma conta de serviço do Google, um Apps Script do próprio dono da planilha
