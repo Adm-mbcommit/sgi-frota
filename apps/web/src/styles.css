@@ -349,3 +349,9 @@ button.day-item.sel{outline:2px solid var(--accent)}
 button.day-item{background:var(--b-appt);border-left:3px solid var(--ev-appt)}
 .doc-links{display:flex;gap:4px;flex-wrap:wrap}
 .doc-link{text-decoration:none;background:color-mix(in srgb,var(--ev-hol, #e5484d) 12%,var(--surface));border-color:color-mix(in srgb,var(--ev-hol, #e5484d) 35%,var(--line))}
+/* certidões (CNDs) */
+.cnd-grid td{vertical-align:top}
+.cnd-cell{display:flex;flex-direction:column;gap:3px;align-items:flex-start;min-width:112px}
+.cnd-cell small{color:var(--muted);font-size:11.5px}
+.cnd-cell .row{display:flex;gap:4px;align-items:center}
+.cnd-co b,.cnd-co small{display:block}.cnd-co small{color:var(--muted);font-size:11.5px}

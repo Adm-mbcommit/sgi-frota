@@ -5,7 +5,7 @@
 import type { Role } from './lib/auth';
 
 /** Item do menu: [caminho relativo ao módulo, rótulo, contador opcional] ou o título de um grupo. */
-export type NavItem = string | { to: string; label: string; badge?: 'alerts' | 'tasks'; roles?: Role[]; hide?: Role[] };
+export type NavItem = string | { to: string; label: string; badge?: 'alerts' | 'tasks' | 'cnds'; roles?: Role[]; hide?: Role[] };
 
 export interface AppModule {
   id: string; name: string; path: string; nav: NavItem[];
@@ -28,7 +28,10 @@ export const MODULES: AppModule[] = [
       { to: 'parametros', label: 'Parâmetros', hide: ['MOTORISTA'] },
     ],
   },
-  { id: 'administrativo', name: 'Administrativo', path: '/administrativo', about: 'Em preparação: vamos definir juntos o que este setor vai controlar.', soon: true, nav: [] },
+  {
+    id: 'administrativo', name: 'Administrativo', path: '/administrativo', about: 'Certidões negativas (CNDs) das empresas, com alerta antes de vencer.',
+    nav: [{ to: '', label: 'Certidões (CNDs)', badge: 'cnds', hide: ['MOTORISTA'] }],
+  },
   { id: 'rh', name: 'RH', path: '/rh', about: 'Em preparação: vamos definir juntos o que este setor vai controlar.', soon: true, nav: [] },
 ];
 

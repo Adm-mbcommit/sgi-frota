@@ -15,7 +15,7 @@ Em servidor próprio (alternativa): Caddy (HTTPS) → nginx (web) → API Fastif
 O SGI Matias Brasil é dividido em módulos, um por setor (Frota, e depois Administrativo, RH…).
 No front, cada módulo é declarado em `apps/web/src/modules.ts` (nome, caminho e menu) e tem as rotas em
 `/<módulo>/...`. O menu lateral mostra Início e os setores; o setor aberto mostra as suas telas recuadas, e setores com `soon: true` aparecem como "em breve". A tela de Início (`pages/Inicio.tsx`) tem um cartão por setor.
-Usuários, Minha conta, **Minhas tarefas** e **Calendário** ficam fora dos módulos. As tarefas são pessoais: tabelas `personal_tasks`, `routine_items` e `routine_checks`, sempre filtradas por organização **e** usuário. Na API, cada setor terá os seus arquivos em `src/modules/`
+Usuários, Minha conta, **Minhas tarefas** e **Calendário** ficam fora dos módulos. As tarefas são pessoais: tabelas `personal_tasks`, `routine_items` e `routine_checks`, sempre filtradas por organização **e** usuário. O Administrativo tem a tela de Certidões (`pages/Certidoes.tsx`, API `src/modules/certificates.ts`, tabelas `companies` e `certificates`). Na API, cada setor terá os seus arquivos em `src/modules/`
 e as suas tabelas, sempre com `organization_id`.
 
 ## Decisões
@@ -69,6 +69,13 @@ Toda alteração feita pela API grava em `audit_log` (quem, quando, o quê). Con
 Instantes em `timestamptz` (UTC). Horários sem fuso vindos das planilhas são interpretados como
 America/Sao_Paulo. Vencimentos e datas de serviço são `date` (sem fuso). "Hoje" e os filtros de período
 usam o calendário de São Paulo.
+
+## Leitura automática das CNDs no Drive
+
+Mesmo modelo da sincronização da planilha, com chave própria (`settings.certSyncTokenHash`, gerada em
+Administrativo → Certidões → Leitura automática). O script (`apps/web/src/lib/cert-sync-script.ts`) roda todo dia às 7h:
+pede as pastas (`GET /certificates/sync/folders`), lista os PDFs e envia nome e link; se a API responder `need`, envia esses
+PDFs em base64 e a API lê o texto com `unpdf` (carregado só nessa hora). Só lê o Drive. Gravações entram no `audit_log` sem usuário.
 
 ## Sincronização automática com a planilha do Google
 

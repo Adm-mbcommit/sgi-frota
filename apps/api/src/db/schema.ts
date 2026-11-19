@@ -360,3 +360,40 @@ export const appointments = pgTable('appointments', {
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 }, (t) => [index('appointments_org_date_idx').on(t.organizationId, t.date)]);
+
+/* ---------- administrativo: empresas do grupo e certidões (CNDs) ---------- */
+
+/** Empresas (CNPJs) do grupo, usadas em licitações. */
+export const companies = pgTable('companies', {
+  id: id(),
+  organizationId: org(),
+  /** Apelido curto, como nas pastas do Drive ("Matias 26"). */
+  shortName: text('short_name').notNull(),
+  name: text('name').notNull(),
+  cnpj: text('cnpj').notNull(),
+  /** Link da pasta da empresa no Google Drive (DOCUMENTOS P/ LICITAÇÕES). */
+  driveFolder: text('drive_folder'),
+  active: boolean('active').notNull().default(true),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+}, (t) => [uniqueIndex('companies_org_cnpj_uq').on(t.organizationId, t.cnpj)]);
+
+/** Certidão vigente de cada tipo por empresa (renovar = atualizar a linha; o histórico fica na auditoria). */
+export const certificates = pgTable('certificates', {
+  id: id(),
+  organizationId: org(),
+  companyId: uuid('company_id').notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  /** FEDERAL, ESTADUAL, MUNICIPAL, FGTS, TRABALHISTA, FALENCIA (CERT_KINDS do @sgi/core). */
+  kind: text('kind').notNull(),
+  issuedOn: date('issued_on'),
+  expiresOn: date('expires_on'),
+  /** Vencimento calculado (a certidão não traz a data impressa, ex.: falência do TJSC). */
+  expiryEstimated: boolean('expiry_estimated').notNull().default(false),
+  /** Dias de antecedência do alerta; null = padrão do tipo. */
+  alertDays: integer('alert_days'),
+  /** Link do PDF no Google Drive. */
+  link: text('link'),
+  notes: text('notes'),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+}, (t) => [uniqueIndex('certificates_company_kind_uq').on(t.companyId, t.kind), index('certificates_org_exp_idx').on(t.organizationId, t.expiresOn)]);

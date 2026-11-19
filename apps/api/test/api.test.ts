@@ -351,4 +351,79 @@ d('API', () => {
     const r2 = (await up()).json();
     expect(r2).toMatchObject({ created: 0, existing: 3, replaced: [] });
   });
+  it('certidões (CNDs): cadastra empresa, grava e renova a certidão, calcula o alerta e bloqueia o leitor', async () => {
+    const co = await call('POST', '/companies', admin, { shortName: 'Matias 26', name: 'MATIAS BRASIL ENGENHARIA LTDA', cnpj: '26951857000180' });
+    expect(co.statusCode).toBe(201);
+    expect(co.json().cnpj).toBe('26.951.857/0001-80');
+    const companyId = co.json().id;
+    expect((await call('POST', '/companies', reader, { shortName: 'X', name: 'X LTDA', cnpj: '11.111.111/0001-11' })).statusCode).toBe(403);
+    const put = (body: object, token = admin) => call('PUT', '/certificates', token, { companyId, ...body });
+    expect((await put({ kind: 'FGTS', expiresOn: '2000-01-01' })).statusCode).toBe(200);
+    // falência sem vencimento: 90 dias da emissão, marcado como estimado
+    const fal = (await put({ kind: 'FALENCIA', issuedOn: '2026-11-09', link: 'https://drive.google.com/file/d/abc/view' })).json();
+    expect(fal).toMatchObject({ expiresOn: '2027-02-07', expiryEstimated: true });
+    expect((await put({ kind: 'FGTS', expiresOn: '2000-01-01', link: 'javascript:alert(1)' })).statusCode).toBe(400);
+    expect((await put({ kind: 'FGTS', expiresOn: '2000-01-01' }, reader)).statusCode).toBe(403);
+    let list = (await call('GET', '/certificates', reader)).json();
+    let c = list.companies.find((x: { id: string }) => x.id === companyId);
+    expect(c.certificates).toHaveLength(6);
+    const fgts = () => c.certificates.find((x: { kind: string }) => x.kind === 'FGTS');
+    expect(fgts().status).toBe('VENCIDO');
+    expect(c.certificates.find((x: { kind: string }) => x.kind === 'FEDERAL').status).toBe('SEM_DADO');
+    // renovar substitui a mesma linha
+    const today = list.today as string;
+    const soon = new Date(Date.parse(today) + 5 * 86_400_000).toISOString().slice(0, 10);
+    await put({ kind: 'FGTS', expiresOn: soon });
+    list = (await call('GET', '/certificates', admin)).json();
+    c = list.companies.find((x: { id: string }) => x.id === companyId);
+    expect(fgts()).toMatchObject({ status: 'ATENCAO', days: 5, alertDays: 7 });
+    await put({ kind: 'FGTS', expiresOn: soon, alertDays: 3 });
+    c = (await call('GET', '/certificates', admin)).json().companies.find((x: { id: string }) => x.id === companyId);
+    expect(fgts()).toMatchObject({ status: 'OK', alertDays: 3, customAlert: true });
+    expect((await call('DELETE', '/certificates/' + fgts().id, admin)).statusCode).toBe(204);
+  });
+  it('certidões: leitura automática da pasta do Drive (nome do arquivo e texto do PDF), sem voltar para uma mais antiga', async () => {
+    // PDF mínimo com o texto da certidão de falência do TJSC
+    const pdf = (text: string) => {
+      const objs = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+        '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>',
+        `<< /Length ${text.length + 37} >>\nstream\nBT /F1 10 Tf 20 700 Td (${text}) Tj ET\nendstream`, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'];
+      let out = '%PDF-1.4\n'; const offs: number[] = [];
+      objs.forEach((o, i) => { offs.push(out.length); out += `${i + 1} 0 obj\n${o}\nendobj\n`; });
+      const x = out.length;
+      out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + offs.map((o) => String(o).padStart(10, '0') + ' 00000 n \n').join('');
+      return Buffer.from(out + `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${x}\n%%EOF`, 'latin1').toString('base64');
+    };
+    const co = (await call('POST', '/companies', admin, { shortName: 'Matias 44', name: 'MATIAS 44 LTDA', cnpj: '44.801.324/0001-02', driveFolder: 'https://drive.google.com/drive/folders/1Fsu7pnp8qMXWgKf566cX2zDlxmwdCviE' })).json();
+    expect((await call('POST', '/certificates/sync/token', reader)).statusCode).toBe(403);
+    const { token } = (await call('POST', '/certificates/sync/token', admin)).json();
+    const sync = (body: object, t = token) => app.inject({ method: 'POST', url: '/api/v1/certificates/sync', headers: { 'x-sync-token': t }, payload: body });
+    expect((await sync({ files: [] }, 'chave-errada-com-mais-de-20-letras')).statusCode).toBe(401);
+    const folders = (await app.inject({ method: 'GET', url: '/api/v1/certificates/sync/folders', headers: { 'x-sync-token': token } })).json();
+    expect(folders).toContainEqual({ companyId: co.id, shortName: 'Matias 44', folderId: '1Fsu7pnp8qMXWgKf566cX2zDlxmwdCviE' });
+    const url = (id: string) => `https://drive.google.com/file/d/${id}/view`;
+    const files = [
+      { companyId: co.id, fileId: 'fgtsAntigo0001', name: 'CND FGTS - VAL 10.11.2026.pdf', url: url('fgtsAntigo0001') },
+      { companyId: co.id, fileId: 'fgtsNovo000001', name: 'CND FGTS - VAL 09.12.26.pdf', url: url('fgtsNovo000001') },
+      { companyId: co.id, fileId: 'falencia000001', name: 'FALENCIA.pdf', url: url('falencia000001') },
+      { companyId: co.id, fileId: 'balanco0000001', name: 'Balanço Patrimonial ECD 2025.pdf', url: url('balanco0000001') },
+    ];
+    const r1 = (await sync({ files })).json();
+    expect(r1.need).toEqual(['falencia000001']);
+    expect(r1.updated.map((u: { kind: string; expiresOn: string }) => [u.kind, u.expiresOn])).toEqual([['FGTS', '2026-12-09']]);
+    const r2 = (await sync({ files, contents: { falencia000001: pdf('Certidao emitida as 09:06 de 09/11/2026.') } })).json();
+    expect(r2).toMatchObject({ need: [], unreadable: [] });
+    expect(r2.updated).toEqual([expect.objectContaining({ kind: 'FALENCIA', expiresOn: '2027-02-07' })]);
+    // já lido: não pede o PDF de novo e não muda nada
+    expect((await sync({ files })).json()).toMatchObject({ need: [], updated: [] });
+    // um arquivo mais antigo não substitui a certidão digitada na tela
+    await call('PUT', '/certificates', admin, { companyId: co.id, kind: 'MUNICIPAL', expiresOn: '2026-12-31' });
+    expect((await sync({ files: [{ companyId: co.id, fileId: 'munAntigo00001', name: 'CND MUNICIPAL - VAL 08.11.2026', url: url('munAntigo00001') }] })).json().updated).toEqual([]);
+    const c = (await call('GET', '/certificates', admin)).json().companies.find((x: { id: string }) => x.id === co.id);
+    const k = (kind: string) => c.certificates.find((x: { kind: string }) => x.kind === kind);
+    expect(k('FALENCIA')).toMatchObject({ issuedOn: '2026-11-09', expiryEstimated: true, link: url('falencia000001') });
+    expect(k('FGTS').link).toBe(url('fgtsNovo000001'));
+    expect(k('MUNICIPAL').expiresOn).toBe('2026-12-31');
+    expect((await call('GET', '/certificates/sync', admin)).json()).toMatchObject({ configured: true });
+  });
 });

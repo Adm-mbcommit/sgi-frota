@@ -101,6 +101,34 @@ tira o CONFIRMAR e, se houver valor, lança o custo em Custos.
 Próximo vencimento = menor data entre CRLV, IPVA, licenciamento e seguro.
 ATRASADO se já passou; PRÓXIMO se faltam ≤ `docDays` dias; OK caso contrário. A CNH segue a mesma regra.
 
+## Certidões (CNDs) — Administrativo
+
+Uma certidão vigente por tipo e empresa (tabela `certificates`; renovar = atualizar a linha, o histórico fica em `audit_log`).
+Regra em `packages/core/src/certificates.ts` (`certificateStatus`):
+VENCIDO se o vencimento já passou; ATENÇÃO se faltam ≤ dias de alerta; OK caso contrário; SEM DADO sem vencimento.
+
+| Tipo | Órgão | Validade habitual | Alerta padrão |
+|---|---|---|---|
+| Federal | Receita Federal / PGFN | 180 dias | 30 dias antes |
+| Estadual | SEF/SC | 180 dias | 30 dias antes |
+| Municipal | Prefeitura de Lages | 30 dias | 10 dias antes |
+| FGTS | Caixa (CRF) | 30 dias | 7 dias antes |
+| Trabalhista | TST (CNDT) | 180 dias | 30 dias antes |
+| Falência | TJSC | 90 dias (sem data impressa) | 15 dias antes |
+
+O alerta de cada certidão pode ser mudado na tela (campo "Avisar quantos dias antes"). Sem vencimento informado,
+o vencimento é a emissão + validade habitual e aparece como "(estimado)" — caso da falência do TJSC, que só informa
+90 dias de autenticidade. A carga inicial (migração `0010_certidoes`) veio da pasta do Drive "DOCUMENTOS P/ LICITAÇÕES"
+(subpastas Matias 26 e Matias 44), lida em 19/11/2026. As empresas Santos (Santos 47 e Santos 50) não entram no controle,
+por decisão do usuário; se um dia precisar, cadastre-as em "Nova empresa".
+
+**Leitura automática do Drive** (`parseCertificateName` e `parseCertificateText` no core): todo dia às 7h um Apps Script
+lista os PDFs da pasta de cada empresa. Tipo e validade vêm do nome do arquivo (`CND FGTS - VAL 22.11.26.pdf`;
+ano com 2 dígitos = 20xx). Sem data no nome (falência), a API lê o texto do PDF: "Válida até", "Validade: x a y" (FGTS),
+"Número Validade N data" (Lages); emissão em "emitida às … de", "Emissão", "Data:". Entre vários arquivos do mesmo tipo
+vale o de vencimento mais tarde, e só substitui o SGI se vencer **depois** do que já está gravado (um arquivo antigo
+esquecido na pasta não desfaz uma renovação). Arquivos que não são CND (balanço, cartão CNPJ) são ignorados.
+
 ## Conferência com o artefato original
 
 O teste de paridade rodou o `compute()` do artefato e o `@sgi/core` sobre o mesmo snapshot

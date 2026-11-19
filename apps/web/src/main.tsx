@@ -17,6 +17,7 @@ import { LEGACY_FROTA_PATHS, MODULES } from './modules';
 import Inicio, { EmPreparacao } from './pages/Inicio';
 import Tarefas from './pages/Tarefas';
 import Calendario from './pages/Calendario';
+import Certidoes from './pages/Certidoes';
 
 const qc = new QueryClient({ defaultOptions: { queries: { staleTime: 60_000, refetchOnWindowFocus: true, retry: 1 } } });
 
@@ -42,6 +43,7 @@ function Root() {
           <Route path="importacoes" element={<Importacoes />} />
           {!can('MOTORISTA') && <Route path="parametros" element={<Parametros />} />}
         </Route>
+        {!can('MOTORISTA') && <Route path="administrativo" element={<Certidoes />} />}
         {MODULES.filter((m) => m.soon).map((m) => <Route key={m.id} path={m.path.slice(1)} element={<EmPreparacao m={m} />} />)}
         {LEGACY_FROTA_PATHS.map((p) => <Route key={p} path={p} element={<Navigate to={'/frota/' + p} replace />} />)}
         <Route path="tarefas" element={<Tarefas />} />
