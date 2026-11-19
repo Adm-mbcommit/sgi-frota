@@ -1,18 +1,17 @@
 /**
- * Administrativo → Certidões (CNDs): quadro por empresa, lista por vencimento e alertas antes de vencer.
+ * Administrativo → Certidões (CNDs): o que renovar agora, um cartão por empresa e a leitura automática do Drive.
  * A antecedência do alerta é de cada tipo (FGTS 7 dias, Municipal 10, Falência 15, demais 30) e pode ser
  * ajustada em cada certidão. Os PDFs ficam no Google Drive (pasta DOCUMENTOS P/ LICITAÇÕES).
  */
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '../lib/api';
+import { api, apiUrl } from '../lib/api';
 import { fd, fdt } from '../lib/format';
-import { apiUrl } from '../lib/api';
 import { certSyncScript } from '../lib/cert-sync-script';
 import { useAuth, WRITE } from '../lib/auth';
 import type { Certificate, CertificatesBoard, Company } from '../lib/types';
-import { Chip, DataTable, FormDialog, Header, Kpi, Loading, nn, num } from '../components/ui';
+import { Chip, FormDialog, Header, Loading, nn, num } from '../components/ui';
 
 export const useCertificates = () => {
   const { can } = useAuth();
@@ -30,8 +29,12 @@ const daysText = (r: Certificate) =>
   r.days == null ? 'sem vencimento' : r.days < 0 ? `vencida há ${-r.days} dia${r.days === -1 ? '' : 's'}` : r.days === 0 ? 'vence hoje' : `vence em ${r.days} dia${r.days === 1 ? '' : 's'}`;
 const chipLabel = (r: Certificate) => (r.status === 'VENCIDO' ? 'Vencida' : r.status === 'ATENCAO' ? (r.days === 0 ? 'Vence hoje' : `${r.days} dia${r.days === 1 ? '' : 's'}`) : r.status === 'OK' ? 'Válida' : 'Sem dado');
 
-const PdfLink = ({ href, label = '📄' }: { href: string | null; label?: string }) =>
-  href ? <a className="btn sm doc-link" href={href} target="_blank" rel="noopener noreferrer" title="Abrir o PDF no Google Drive">{label}</a> : null;
+const shortDate = (iso: string) => fd(iso).slice(0, 5);
+/** Frase da situação: "vence em 3 dias (22/11)", "venceu em 08/11 (há 11 dias)". */
+const situation = (r: Certificate) =>
+  !r.expiresOn || r.days == null ? 'sem data de validade'
+    : r.days < 0 ? `venceu em ${shortDate(r.expiresOn)} (há ${-r.days} dia${r.days === -1 ? '' : 's'})`
+    : r.days === 0 ? 'vence hoje' : `vence em ${r.days} dia${r.days === 1 ? '' : 's'} (${shortDate(r.expiresOn)})`;
 
 export default function Certidoes() {
   const { can } = useAuth(); const qc = useQueryClient();
@@ -41,65 +44,60 @@ export default function Certidoes() {
   const b = q.data;
   const rows = b ? rowsOf(b) : [];
   const alerts = certAlerts(b);
-  const count = (s: string) => rows.filter((r) => r.status === s).length;
+  const next = rows.filter((r) => r.status === 'OK' && r.expiresOn).sort((a, b) => a.expiresOn!.localeCompare(b.expiresOn!))[0];
   const info = (kind: string) => b?.kinds.find((k) => k.kind === kind);
+  const write = can(...WRITE);
   return (
     <>
-      <Header title="Certidões (CNDs)" sub="Vencimento das certidões negativas de cada empresa. O alerta acende alguns dias antes de vencer (FGTS 7, Municipal 10, Falência 15, demais 30)."
-        actions={can(...WRITE) && <button className="btn" onClick={() => setCo({})}>Nova empresa</button>} />
+      <Header title="Certidões (CNDs)" sub="Validade das certidões negativas de cada empresa. O sistema avisa antes de vencer."
+        actions={write && <button className="btn" onClick={() => setCo({})}>Nova empresa</button>} />
       <Loading q={q} />
       {b && <>
-        <div className="kpis">
-          <Kpi label="Vencidas" value={count('VENCIDO')} note="renovar já" />
-          <Kpi label="Vencem em breve" value={count('ATENCAO')} note="dentro do prazo de alerta" />
-          <Kpi label="Válidas" value={count('OK')} />
-          <Kpi label="Sem dado" value={count('SEM_DADO')} />
-        </div>
-        {alerts.length > 0 && <div className={'banner cal-banner' + (count('VENCIDO') ? ' bad-banner' : '')}>
-          <span>📑 <b>Renovar:</b> {alerts.map((r) => `${r.company.shortName} ${r.label} (${daysText(r)})`).join(' · ')}</span>
-        </div>}
-
-        <h2>Quadro por empresa</h2>
-        <p className="note">Clique na situação para atualizar a certidão depois de renovar (datas e link do PDF). Em 📁 abre a pasta da empresa no Drive.</p>
-        <div className="tw"><table className="cnd-grid">
-          <thead><tr><th>Empresa</th>{b.kinds.map((k) => <th key={k.kind} title={k.issuer}>{k.label}</th>)}</tr></thead>
-          <tbody>{b.companies.filter((c) => c.active).map((c) => (
-            <tr key={c.id}>
-              <td className="cnd-co"><b>{c.shortName}</b><small>{c.name}</small><small>{c.cnpj}</small>
-                <span className="row" style={{ display: 'flex', gap: 4, marginTop: 4 }}>
-                  {c.driveFolder && <a className="btn sm" href={c.driveFolder} target="_blank" rel="noopener noreferrer" title="Abrir a pasta da empresa no Google Drive">📁 Pasta</a>}
-                  {can(...WRITE) && <button className="btn sm" onClick={() => setCo(c)}>Editar</button>}
-                </span>
-              </td>
-              {c.certificates.map((x) => (
-                <td key={x.kind}><div className="cnd-cell">
-                  <span className="row">
-                    {can(...WRITE)
-                      ? <button className="linkish" title="Atualizar esta certidão" onClick={() => setEdit({ ...x, company: c })}><Chip s={x.status} label={chipLabel(x)} /></button>
-                      : <Chip s={x.status} label={chipLabel(x)} />}
-                    <PdfLink href={x.link} />
+        {alerts.length > 0
+          ? <section className="panel cnd-todo">
+              <h3>Renovar agora <span className="cnd-count">{alerts.length}</span></h3>
+              {alerts.map((r) => (
+                <div key={r.company.id + r.kind} className={'cnd-todo-row ' + (r.status === 'VENCIDO' ? 'bad' : 'warn')}>
+                  <span className="cnd-dot" aria-hidden />
+                  <span className="cnd-todo-what"><b>{r.company.shortName}</b> · {r.label}</span>
+                  <span className="cnd-todo-when">{situation(r)}</span>
+                  <span className="cnd-todo-act">
+                    <span className="note">{info(r.kind)?.issuer}</span>
+                    {write && <button className="btn sm pri" onClick={() => setEdit(r)}>Atualizar</button>}
                   </span>
-                  <small>{x.expiresOn ? `até ${fd(x.expiresOn)}${x.expiryEstimated ? ' (estimado)' : ''}` : '—'}</small>
-                </div></td>
+                </div>
               ))}
-            </tr>
-          ))}</tbody>
-        </table></div>
+            </section>
+          : <section className="panel cnd-ok">✅ <b>Tudo em dia.</b>{next && <> Próxima a vencer: {next.company.shortName} · {next.label}, em {fd(next.expiresOn)}.</>}</section>}
+
+        <div className="cnd-cos">
+          {b.companies.filter((c) => c.active).map((c) => (
+            <article key={c.id} className="panel cnd-co">
+              <header>
+                <div><h3>{c.shortName}</h3><small>{c.name} · {c.cnpj}</small></div>
+                <div className="cnd-co-act">
+                  {c.driveFolder && <a className="btn sm" href={c.driveFolder} target="_blank" rel="noopener noreferrer" title="Abrir a pasta da empresa no Google Drive">📁 Pasta no Drive</a>}
+                  {write && <button className="btn sm" onClick={() => setCo(c)} title="Editar dados da empresa">Editar</button>}
+                </div>
+              </header>
+              <ul className="cnd-list">
+                {c.certificates.map((x) => (
+                  <li key={x.kind}>
+                    <span className="cnd-kind" title={info(x.kind)?.issuer}>{x.label}</span>
+                    <span className="cnd-date">{x.expiresOn ? fd(x.expiresOn) : '—'}{x.expiryEstimated && <small title={`Sem validade impressa: ${info(x.kind)?.validityDays} dias da emissão`}> estimado</small>}</span>
+                    <Chip s={x.status} label={chipLabel(x)} />
+                    <span className="cnd-act">
+                      {x.link ? <a className="cnd-icon" href={x.link} target="_blank" rel="noopener noreferrer" title="Abrir o PDF">📄</a> : <span className="cnd-icon off" />}
+                      {write && <button className="cnd-icon" onClick={() => setEdit({ ...x, company: c })} title="Atualizar esta certidão" aria-label={`Atualizar ${x.label}`}>✏️</button>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
 
         {can('ADMIN') && <DriveSyncPanel />}
-
-        <h2>Por vencimento</h2>
-        <DataTable rows={[...rows].sort((a, b) => (a.expiresOn ?? '9').localeCompare(b.expiresOn ?? '9'))} filter={{ label: 'Todas as empresas', v: (r) => r.company.shortName }} cols={[
-          { h: 'Empresa', v: (r) => r.company.shortName }, { h: 'Certidão', v: (r) => r.label },
-          { h: 'Emissão', v: (r) => r.issuedOn, f: (r) => fd(r.issuedOn) },
-          { h: 'Vencimento', v: (r) => r.expiresOn, f: (r) => <>{fd(r.expiresOn)}{r.expiryEstimated && <span className="note" title={`Sem validade impressa: ${info(r.kind)?.validityDays} dias da emissão`}> (estimado)</span>}</> },
-          { h: 'Dias', v: (r) => r.days, n: true },
-          { h: 'Alerta', v: (r) => r.alertDays, f: (r) => `${r.alertDays} dias antes${r.customAlert ? ' *' : ''}` },
-          { h: 'Situação', v: (r) => r.status, f: (r) => <Chip s={r.status} label={chipLabel(r)} /> },
-          { h: 'Onde renovar', v: (r) => info(r.kind)?.issuer },
-          { h: 'PDF', v: (r) => r.link, f: (r) => <PdfLink href={r.link} label="📄 Abrir" /> },
-          { h: '', v: () => '', f: (r) => can(...WRITE) && <button className="btn sm" onClick={() => setEdit(r)}>Atualizar</button> },
-        ]} />
       </>}
 
       {edit && <FormDialog title={`${edit.company.shortName}: certidão ${edit.label}`} onClose={() => setEdit(null)} fields={[
@@ -146,15 +144,16 @@ function DriveSyncPanel() {
     await api('/certificates/sync/token', { method: 'DELETE' }); setScript(''); await qc.invalidateQueries({ queryKey: ['cert-sync'] });
   };
   const copy = async () => { try { await navigator.clipboard.writeText(script); setCopied(true); } catch { setCopied(false); } };
+  const status = d?.configured
+    ? <><span className="chip ok">Ligada</span> <span className="note">última leitura {d.lastCheckAt ? fdt(d.lastCheckAt) : 'ainda nenhuma'}</span></>
+    : <span className="chip">Desligada</span>;
   return (
-    <div className="panel" style={{ marginTop: 14 }}>
-      <h3 style={{ marginTop: 0 }}>Leitura automática do Google Drive</h3>
-      <p className="note" style={{ marginTop: 0 }}>Todo dia às 7h o SGI lê as pastas das empresas (link 📁 de cada uma). Salvou uma CND nova na pasta com o nome no padrão
-        <b> CND FGTS - VAL 22.11.26.pdf</b>? A validade e o link são atualizados sozinhos. A certidão de falência pode ficar sem data no nome: o SGI lê a data de emissão dentro do PDF.
+    <details className="panel cnd-sync" open={!d?.configured || !!script}>
+      <summary><b>Leitura automática do Google Drive</b> {d && status}</summary>
+      <p className="note">Todo dia às 7h o SGI lê a pasta de cada empresa. Salvou uma CND nova com o nome no padrão <b>CND FGTS - VAL 22.11.26.pdf</b>?
+        A validade e o link se atualizam sozinhos. A certidão de falência pode ficar sem data no nome: o SGI lê a data dentro do PDF.
         Um arquivo mais antigo nunca substitui uma certidão mais nova.</p>
-      {d && <p>{d.configured
-        ? <><span className="chip ok">Ligada</span> Última leitura: <b>{d.lastCheckAt ? fdt(d.lastCheckAt) : 'ainda nenhuma'}</b> · Última certidão atualizada: {d.lastUpdateAt ? fdt(d.lastUpdateAt) : 'ainda nenhuma'}</>
-        : <><span className="chip">Desligada</span> Clique em Ligar e siga os passos (uma vez só).</>}</p>}
+      {d?.configured && <p className="note">Última certidão atualizada pela leitura: {d.lastUpdateAt ? fdt(d.lastUpdateAt) : 'ainda nenhuma'}.</p>}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <button className="btn pri" onClick={generate}>{d?.configured ? 'Gerar nova chave e script' : 'Ligar: gerar chave e script'}</button>
         {d?.configured && <button className="btn" onClick={disable}>Desligar</button>}
@@ -173,7 +172,7 @@ function DriveSyncPanel() {
         <button className="btn pri" onClick={copy}>{copied ? 'Copiado!' : 'Copiar script'}</button>
         <textarea readOnly value={script} rows={10} style={{ width: '100%', marginTop: 8, fontFamily: 'monospace', fontSize: 12 }} onFocus={(e) => e.target.select()} />
       </>}
-    </div>
+    </details>
   );
 }
 
