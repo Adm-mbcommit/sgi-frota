@@ -351,4 +351,35 @@ d('API', () => {
     const r2 = (await up()).json();
     expect(r2).toMatchObject({ created: 0, existing: 3, replaced: [] });
   });
+  it('certidões (CNDs): cadastra empresa, grava e renova a certidão, calcula o alerta e bloqueia o leitor', async () => {
+    const co = await call('POST', '/companies', admin, { shortName: 'Matias 26', name: 'MATIAS BRASIL ENGENHARIA LTDA', cnpj: '26951857000180' });
+    expect(co.statusCode).toBe(201);
+    expect(co.json().cnpj).toBe('26.951.857/0001-80');
+    const companyId = co.json().id;
+    expect((await call('POST', '/companies', reader, { shortName: 'X', name: 'X LTDA', cnpj: '11.111.111/0001-11' })).statusCode).toBe(403);
+    const put = (body: object, token = admin) => call('PUT', '/certificates', token, { companyId, ...body });
+    expect((await put({ kind: 'FGTS', expiresOn: '2000-01-01' })).statusCode).toBe(200);
+    // falência sem vencimento: 90 dias da emissão, marcado como estimado
+    const fal = (await put({ kind: 'FALENCIA', issuedOn: '2026-11-09', link: 'https://drive.google.com/file/d/abc/view' })).json();
+    expect(fal).toMatchObject({ expiresOn: '2027-02-07', expiryEstimated: true });
+    expect((await put({ kind: 'FGTS', expiresOn: '2000-01-01', link: 'javascript:alert(1)' })).statusCode).toBe(400);
+    expect((await put({ kind: 'FGTS', expiresOn: '2000-01-01' }, reader)).statusCode).toBe(403);
+    let list = (await call('GET', '/certificates', reader)).json();
+    let c = list.companies.find((x: { id: string }) => x.id === companyId);
+    expect(c.certificates).toHaveLength(6);
+    const fgts = () => c.certificates.find((x: { kind: string }) => x.kind === 'FGTS');
+    expect(fgts().status).toBe('VENCIDO');
+    expect(c.certificates.find((x: { kind: string }) => x.kind === 'FEDERAL').status).toBe('SEM_DADO');
+    // renovar substitui a mesma linha
+    const today = list.today as string;
+    const soon = new Date(Date.parse(today) + 5 * 86_400_000).toISOString().slice(0, 10);
+    await put({ kind: 'FGTS', expiresOn: soon });
+    list = (await call('GET', '/certificates', admin)).json();
+    c = list.companies.find((x: { id: string }) => x.id === companyId);
+    expect(fgts()).toMatchObject({ status: 'ATENCAO', days: 5, alertDays: 7 });
+    await put({ kind: 'FGTS', expiresOn: soon, alertDays: 3 });
+    c = (await call('GET', '/certificates', admin)).json().companies.find((x: { id: string }) => x.id === companyId);
+    expect(fgts()).toMatchObject({ status: 'OK', alertDays: 3, customAlert: true });
+    expect((await call('DELETE', '/certificates/' + fgts().id, admin)).statusCode).toBe(204);
+  });
 });

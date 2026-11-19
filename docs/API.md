@@ -63,6 +63,15 @@ Feriados nacionais são calculados no front (`nationalHolidays` do `@sgi/core`, 
 | GET | /appointments?from&to | todos | Compromissos do usuário + os da equipe (`shared`); `{id, date, time, title, notes, shared, mine, owner}` |
 | POST / PATCH /:id / DELETE /:id | /appointments | todos | `{date, time?, title, notes?, shared?}`; só quem criou altera ou exclui |
 
+## Administrativo: certidões (CNDs)
+
+| Método | Rota | Perfil | Observação |
+|---|---|---|---|
+| GET | /certificates | ADMIN, GESTOR, LEITOR | `{today, kinds, companies: [{…empresa, certificates: [{kind, issuedOn, expiresOn, expiryEstimated, alertDays, link, days, status}]}]}` — os 6 tipos sempre aparecem |
+| PUT | /certificates | ADMIN, GESTOR | `{companyId, kind, issuedOn?, expiresOn?, alertDays?, link?, notes?}`; cria ou renova a certidão do tipo |
+| DELETE | /certificates/:id | ADMIN, GESTOR | |
+| POST / PATCH /:id | /companies | ADMIN, GESTOR | `{shortName, name, cnpj, driveFolder?, active?}`; CNPJ único por organização |
+
 ## Manutenção (complemento)
 
 | Método | Rota | Perfil | Observação |

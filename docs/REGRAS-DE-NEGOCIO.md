@@ -101,6 +101,26 @@ tira o CONFIRMAR e, se houver valor, lança o custo em Custos.
 Próximo vencimento = menor data entre CRLV, IPVA, licenciamento e seguro.
 ATRASADO se já passou; PRÓXIMO se faltam ≤ `docDays` dias; OK caso contrário. A CNH segue a mesma regra.
 
+## Certidões (CNDs) — Administrativo
+
+Uma certidão vigente por tipo e empresa (tabela `certificates`; renovar = atualizar a linha, o histórico fica em `audit_log`).
+Regra em `packages/core/src/certificates.ts` (`certificateStatus`):
+VENCIDO se o vencimento já passou; ATENÇÃO se faltam ≤ dias de alerta; OK caso contrário; SEM DADO sem vencimento.
+
+| Tipo | Órgão | Validade habitual | Alerta padrão |
+|---|---|---|---|
+| Federal | Receita Federal / PGFN | 180 dias | 30 dias antes |
+| Estadual | SEF/SC | 180 dias | 30 dias antes |
+| Municipal | Prefeitura de Lages | 30 dias | 10 dias antes |
+| FGTS | Caixa (CRF) | 30 dias | 7 dias antes |
+| Trabalhista | TST (CNDT) | 180 dias | 30 dias antes |
+| Falência | TJSC | 90 dias (sem data impressa) | 15 dias antes |
+
+O alerta de cada certidão pode ser mudado na tela (campo "Avisar quantos dias antes"). Sem vencimento informado,
+o vencimento é a emissão + validade habitual e aparece como "(estimado)" — caso da falência do TJSC, que só informa
+90 dias de autenticidade. A carga inicial (migração `0010_certidoes`) veio da pasta do Drive "DOCUMENTOS P/ LICITAÇÕES"
+(subpastas Matias 26, Matias 44, Santos 47, Santos 50), lida em 19/11/2026.
+
 ## Conferência com o artefato original
 
 O teste de paridade rodou o `compute()` do artefato e o `@sgi/core` sobre o mesmo snapshot

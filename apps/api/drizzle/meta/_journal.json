@@ -71,6 +71,13 @@
       "when": 1794925628889,
       "tag": "0009_custos_mais_controle",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795095322118,
+      "tag": "0010_certidoes",
+      "breakpoints": true
     }
   ]
 }

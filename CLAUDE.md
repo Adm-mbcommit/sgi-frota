@@ -1,7 +1,7 @@
 # SGI Matias Brasil — guia para o Claude
 
 Sistema de Gestão Interno da Matias Brasil Engenharia, organizado em **módulos por setor**.
-Hoje existe o módulo **Frota** (4 veículos, ~8 motoristas); virão Administrativo, RH e outros.
+Hoje existem os módulos **Frota** (4 veículos, ~8 motoristas) e **Administrativo** (Certidões/CNDs das 4 empresas, `pages/Certidoes.tsx`); virão RH e outros.
 O repositório e o projeto Vercel ainda se chamam `sgi-frota` (nome antigo).
 Nasceu do artefato "SGI Frota Matias" (página única no Claude); `legacy/` guarda o original e o snapshot de dados.
 Produção: https://sgi-frota.vercel.app (projeto Vercel `sgi-frota`, conta `adm-mbcommit`).

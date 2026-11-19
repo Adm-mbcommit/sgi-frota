@@ -27,3 +27,11 @@ export interface Vehicle { id: string; plate: string; name: string; model: strin
 export interface Cost { id: string; date: string; vehicleId: string | null; vehicleName: string | null; category: string; description: string; supplier: string | null; amount: number | null; invoice: string | null; notes: string | null }
 export interface Task { id: string; title: string; description: string | null; status: string }
 export interface User { id: string; name: string; email: string; role: string; active: boolean; lastLoginAt: string | null }
+export interface Certificate {
+  id: string | null; kind: string; label: string; issuedOn: string | null; expiresOn: string | null; expiryEstimated: boolean;
+  alertDays: number; customAlert: boolean; link: string | null; notes: string | null; days: number | null; status: 'VENCIDO' | 'ATENCAO' | 'OK' | 'SEM_DADO';
+}
+export interface Company { id: string; shortName: string; name: string; cnpj: string; driveFolder: string | null; active: boolean; certificates: Certificate[] }
+export interface CertificatesBoard {
+  today: string; kinds: { kind: string; label: string; issuer: string; validityDays: number; alertDays: number }[]; companies: Company[];
+}

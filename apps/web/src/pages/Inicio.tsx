@@ -10,6 +10,7 @@ import { MODULES, type AppModule } from '../modules';
 import { dueInfo, useMyTasks } from './Tarefas';
 import { CalendarSummary } from './Calendario';
 import { MaintenanceSummary } from './Manutencao';
+import { CertificatesSummary, certAlerts, useCertificates } from './Certidoes';
 
 export default function Inicio() {
   const { me } = useAuth();
@@ -17,6 +18,7 @@ export default function Inicio() {
     <>
       <Header title={`Olá, ${me?.user.name.split(' ')[0] ?? ''}`} sub="SGI Matias Brasil · escolha um setor." />
       <MaintenanceSummary />
+      <CertificatesSummary />
       <CalendarSummary />
       <MyTasksSummary />
       <div className="cards">{MODULES.map((m) => <ModuleCard key={m.id} m={m} />)}</div>
@@ -45,6 +47,7 @@ function ModuleCard({ m }: { m: AppModule }) {
       <header><h3>{m.name}</h3>{m.soon && <span className="chip">Em breve</span>}</header>
       <p className="note" style={{ margin: 0 }}>{m.about}</p>
       {m.id === 'frota' && <FrotaSummary />}
+      {m.id === 'administrativo' && <AdmSummary />}
       <div><Link className={'btn' + (m.soon ? '' : ' pri')} to={m.path}>{m.soon ? 'Ver' : 'Abrir ' + m.name}</Link></div>
     </article>
   );
@@ -60,6 +63,19 @@ function FrotaSummary() {
       <span>Veículos</span><b>{d.vehicles.length}</b>
       <span>Alertas de manutenção</span><b>{d.kpis.maintenanceAlerts}</b>
       <span>Pendências abertas</span><b>{d.openTasks.length}</b>
+    </div>
+  );
+}
+
+function AdmSummary() {
+  const q = useCertificates();
+  if (!q.data) return null;
+  const a = certAlerts(q.data);
+  return (
+    <div className="kv">
+      <span>Empresas</span><b>{q.data.companies.filter((c) => c.active).length}</b>
+      <span>Certidões vencidas</span><b>{a.filter((r) => r.status === 'VENCIDO').length}</b>
+      <span>Vencendo em breve</span><b>{a.filter((r) => r.status === 'ATENCAO').length}</b>
     </div>
   );
 }

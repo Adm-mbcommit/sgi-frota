@@ -11,3 +11,4 @@ export * from './tasks.js';
 export * from './calendar.js';
 export * from './maintenance.js';
 export * from './maiscontrole.js';
+export * from './certificates.js';
