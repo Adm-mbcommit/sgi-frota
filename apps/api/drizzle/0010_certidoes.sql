@@ -31,16 +31,15 @@ ALTER TABLE "companies" ADD CONSTRAINT "companies_organization_id_organizations_
 CREATE UNIQUE INDEX "certificates_company_kind_uq" ON "certificates" USING btree ("company_id","kind");--> statement-breakpoint
 CREATE INDEX "certificates_org_exp_idx" ON "certificates" USING btree ("organization_id","expires_on");--> statement-breakpoint
 CREATE UNIQUE INDEX "companies_org_cnpj_uq" ON "companies" USING btree ("organization_id","cnpj");--> statement-breakpoint
--- Relação das CNDs lida no Google Drive em 19/11/2026 (pasta "DOCUMENTOS P/ LICITAÇÕES", uma subpasta por empresa).
+-- Relação das CNDs lida no Google Drive em 19/11/2026 (pasta "DOCUMENTOS P/ LICITAÇÕES", subpastas Matias 26 e Matias 44;
+-- as empresas Santos ficam de fora por decisão do usuário).
 -- Vencimentos conferidos no nome dos arquivos e, nos casos vencidos/próximos, dentro do PDF.
 -- Falência (TJSC) não traz validade: 90 dias da emissão (expiry_estimated).
 INSERT INTO "companies" ("organization_id", "short_name", "name", "cnpj", "drive_folder")
 SELECT o."id", c.short_name, c.name, c.cnpj, 'https://drive.google.com/drive/folders/' || c.folder
 FROM "organizations" o,
   (VALUES ('Matias 26', 'MATIAS BRASIL ENGENHARIA LTDA', '26.951.857/0001-80', '14xpDFzZwPHVp_NzLD5yhHwS7g74cF6G1'),
-          ('Matias 44', 'MATIAS BRASIL ENGENHARIA E EMPREENDIMENTOS LTDA', '44.801.324/0001-02', '1Fsu7pnp8qMXWgKf566cX2zDlxmwdCviE'),
-          ('Santos 47', 'SANTOS BRASIL TERRAPLANAGEM LTDA', '47.317.891/0001-78', '1f1c1Gx4BlivAxo7IxrXYg-s7UZsZHs8X'),
-          ('Santos 50', 'SANTOS GUIMARAES CONSTRUCOES E EMPREENDIMENTOS SPE LTDA', '50.043.646/0001-24', '1WdjDnLD5nEBSY7BV98UoDCQvKez721jN')
+          ('Matias 44', 'MATIAS BRASIL ENGENHARIA E EMPREENDIMENTOS LTDA', '44.801.324/0001-02', '1Fsu7pnp8qMXWgKf566cX2zDlxmwdCviE')
   ) AS c(short_name, name, cnpj, folder)
 ON CONFLICT DO NOTHING;
 --> statement-breakpoint
@@ -59,19 +58,7 @@ FROM "companies" co,
     ('44.801.324/0001-02', 'MUNICIPAL', '2026-10-09', '2026-11-08', false, '1ZEG1GGWQHdLkaGan-WxEBGM1VGxxTm4s'),
     ('44.801.324/0001-02', 'FGTS', '2026-10-12', '2026-11-10', false, '1U5YBNkdn7KMHFQzqwX1wlJOwDUuWWesQ'),
     ('44.801.324/0001-02', 'TRABALHISTA', NULL, '2027-01-24', false, '1__KlO8y263dw3LlIpFZ3FJjxkWeryyve'),
-    ('44.801.324/0001-02', 'FALENCIA', '2026-11-09', '2027-02-07', true, '1aJdjtOOxOqvKZbv2LskcXnSZ8_PAJXIb'),
-    ('47.317.891/0001-78', 'FEDERAL', NULL, '2027-03-01', false, '1wwg2YCnkv5vbLWenHLUvYjEdDFTHPyxo'),
-    ('47.317.891/0001-78', 'ESTADUAL', NULL, '2027-03-01', false, '1fXaXpllc3GQpntyaacjQ9KadIpF2fat-'),
-    ('47.317.891/0001-78', 'MUNICIPAL', NULL, '2026-11-08', false, '1QSnwnY2sRYiIDQyOyR2sG5U0NLMGqmHd'),
-    ('47.317.891/0001-78', 'FGTS', '2026-09-13', '2026-10-12', false, '1Ryp675hvLwzpfGFIe3F1QH9J_uAQTBCN'),
-    ('47.317.891/0001-78', 'TRABALHISTA', NULL, '2026-11-28', false, '1KFUND-cfWWP1pqFeqAIIe0NyXG3Xx8ZG'),
-    ('47.317.891/0001-78', 'FALENCIA', '2026-06-01', '2026-08-30', true, '1SI6-qDNvScEtYS51w4L8xLNKpcL72_Fh'),
-    ('50.043.646/0001-24', 'FEDERAL', NULL, '2027-02-16', false, '1J7bGhlQSY1iPdH7nkKUJxlUt7RnMlL4J'),
-    ('50.043.646/0001-24', 'ESTADUAL', NULL, '2027-02-16', false, '1DHvXjbqsLtZoc9RGybIIGGtyyqzDn4uU'),
-    ('50.043.646/0001-24', 'MUNICIPAL', NULL, '2026-11-08', false, '1kaEN2_yRBAjgHNhx5I90QepAPJCsVoS7'),
-    ('50.043.646/0001-24', 'FGTS', '2026-09-14', '2026-10-13', false, '1j6Pyfxf4M_BVteihsWsPobJqROSZXh6C'),
-    ('50.043.646/0001-24', 'TRABALHISTA', NULL, '2027-02-16', false, '1PFB9-t27BmGpYoLjff6qmJRH8rWgICj0'),
-    ('50.043.646/0001-24', 'FALENCIA', '2026-08-20', '2026-11-18', true, '12CbpCI86S9rMdh_SSs_blhQW4kzAY95_')
+    ('44.801.324/0001-02', 'FALENCIA', '2026-11-09', '2027-02-07', true, '1aJdjtOOxOqvKZbv2LskcXnSZ8_PAJXIb')
   ) AS x(cnpj, kind, issued, expires, estimated, file)
 WHERE co."cnpj" = x.cnpj
 ON CONFLICT DO NOTHING;

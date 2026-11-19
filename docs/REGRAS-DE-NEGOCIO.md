@@ -119,7 +119,8 @@ VENCIDO se o vencimento já passou; ATENÇÃO se faltam ≤ dias de alerta; OK c
 O alerta de cada certidão pode ser mudado na tela (campo "Avisar quantos dias antes"). Sem vencimento informado,
 o vencimento é a emissão + validade habitual e aparece como "(estimado)" — caso da falência do TJSC, que só informa
 90 dias de autenticidade. A carga inicial (migração `0010_certidoes`) veio da pasta do Drive "DOCUMENTOS P/ LICITAÇÕES"
-(subpastas Matias 26, Matias 44, Santos 47, Santos 50), lida em 19/11/2026.
+(subpastas Matias 26 e Matias 44), lida em 19/11/2026. As empresas Santos (Santos 47 e Santos 50) não entram no controle,
+por decisão do usuário; se um dia precisar, cadastre-as em "Nova empresa".
 
 ## Conferência com o artefato original
 
