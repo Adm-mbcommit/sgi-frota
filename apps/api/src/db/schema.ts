@@ -186,6 +186,8 @@ export const speedEvents = pgTable('speed_events', {
   durationH: doublePrecision('duration_h'),
   vmax: doublePrecision('vmax').notNull(),
   vavg: doublePrecision('vavg'),
+  /** Distância do período (km), quando o relatório traz a coluna. */
+  distanceKm: doublePrecision('distance_km'),
   addressStart: text('address_start'),
   addressEnd: text('address_end'),
   importId: uuid('import_id'),

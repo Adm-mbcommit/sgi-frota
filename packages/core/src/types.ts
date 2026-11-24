@@ -47,6 +47,7 @@ export interface SpeedEventInput {
   durationH: number | null;
   vmax: number;
   vavg: number | null;
+  distanceKm?: number | null;
   from?: string | null;
   to?: string | null;
 }

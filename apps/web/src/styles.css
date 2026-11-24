@@ -385,3 +385,8 @@ button.day-item{background:var(--b-appt);border-left:3px solid var(--ev-appt)}
   .cnd-todo-act{justify-content:flex-start}
   .cnd-cos{grid-template-columns:1fr}
 }
+
+/* Uso dos veículos */
+.usage-bar{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) 54px}
+.usage-bar>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.usage-away{color:var(--warn);font-weight:500}

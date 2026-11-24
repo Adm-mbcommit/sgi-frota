@@ -18,6 +18,7 @@ import Inicio, { EmPreparacao } from './pages/Inicio';
 import Tarefas from './pages/Tarefas';
 import Calendario from './pages/Calendario';
 import Certidoes from './pages/Certidoes';
+import Uso from './pages/Uso';
 
 const qc = new QueryClient({ defaultOptions: { queries: { staleTime: 60_000, refetchOnWindowFocus: true, retry: 1 } } });
 
@@ -38,6 +39,7 @@ function Root() {
           <Route path="viagens" element={<Viagens />} />
           <Route path="abastecimentos" element={<Abastecimentos />} />
           <Route path="velocidade" element={<Velocidade />} />
+          <Route path="uso" element={<Uso />} />
           <Route path="custos" element={<Custos />} />
           <Route path="pendencias" element={<Pendencias />} />
           <Route path="importacoes" element={<Importacoes />} />

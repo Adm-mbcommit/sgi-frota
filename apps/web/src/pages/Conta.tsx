@@ -54,6 +54,10 @@ const GROUPS: { title: string; items: [key: string, label: string, unit: string,
     ['docDays', 'Avisar documentos e CNH com antecedência de', 'dias'],
     ['speed', 'Excesso de velocidade acima de', 'km/h'],
   ] },
+  { title: 'Uso dos veículos (rastreador)', items: [
+    ['workStart', 'Início do expediente (6,5 = 06h30)', 'horas', '0.25'],
+    ['workEnd', 'Fim do expediente (19,5 = 19h30)', 'horas', '0.25'],
+  ] },
   { title: 'Viagens e hodômetro', items: [
     ['tripH', 'Duração máxima aceitável de uma viagem', 'horas'],
     ['maxTrip', 'Distância máxima aceitável em uma viagem', 'km'],
