@@ -85,6 +85,13 @@
       "when": 1795453185167,
       "tag": "0011_cnds_renovadas_23_11",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795606626801,
+      "tag": "0012_falencia_matias26_23_11",
+      "breakpoints": true
     }
   ]
 }
