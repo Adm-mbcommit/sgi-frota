@@ -28,9 +28,21 @@ export function KmBadge({ kmLeft, cfg }: { kmLeft: number | null; cfg: KmCfg }) 
 
 export const usePlan = () => useQuery({ queryKey: ['plan'], queryFn: () => api<PlanItem[]>('/maintenance/plan') });
 
-/** Revisões agrupadas (itens que vencem juntos), da mais urgente para a menos urgente. */
+/**
+ * Revisões agrupadas (itens que vencem juntos), da mais urgente para a menos urgente.
+ * Itens do mesmo veículo, situação e km da próxima formam um só alerta, mesmo que só alguns também vençam
+ * por data (ex.: óleo a cada 12 meses e alinhamento só por km): vale a data mais cedo.
+ */
 export function dueGroups(plan: PlanItem[], today = todayIso()) {
-  return groupDue(plan.map((p) => ({ ...p, status: p.status as DueGroup['status'] })), today);
+  const out: DueGroup[] = [];
+  for (const g of groupDue(plan.map((p) => ({ ...p, status: p.status as DueGroup['status'] })), today)) {
+    const m = g.nextKm == null ? undefined : out.find((x) => x.plate === g.plate && x.status === g.status && x.nextKm === g.nextKm);
+    if (!m) { out.push({ ...g, items: [...g.items], ids: [...g.ids] }); continue; }
+    m.items.push(...g.items); m.ids.push(...g.ids);
+    if (g.dueDate && (!m.dueDate || g.dueDate < m.dueDate)) { m.dueDate = g.dueDate; m.daysLeft = g.daysLeft; }
+    if (g.expectedDate && (!m.expectedDate || g.expectedDate < m.expectedDate)) { m.expectedDate = g.expectedDate; m.by = g.by; }
+  }
+  return out;
 }
 
 const vname = (plan: PlanItem[], plate: string) => plan.find((p) => p.plate === plate)?.vehicleName ?? plate;
@@ -177,7 +189,7 @@ function GroupCard({ g, plan, cfg, onRegister }: { g: DueGroup; plan: PlanItem[]
     <div className={'due-card ' + g.status.toLowerCase() + lvCls}>
       <div className="due-head"><b>{vname(plan, g.plate)}</b><Chip s={g.status} /></div>
       <KmBadge kmLeft={g.kmLeft} cfg={cfg} />
-      <div className="due-items">{listItems(g.items)}</div>
+      <div className="due-items">{g.items.join(', ')}</div>
       <ul className="due-facts">
         {lastText(items) && <li>🔧 {lastText(items)}</li>}
         {kmText(g) && <li>🛣️ {kmText(g)}</li>}

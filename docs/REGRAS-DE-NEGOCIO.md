@@ -65,7 +65,8 @@ tira o CONFIRMAR e, se houver valor, lança o custo em Custos.
 `@sgi/core` → `maintenance.ts`:
 - **Data esperada** de cada item = a mais cedo entre a data limite (última data + meses) e a data em que o veículo
   deve chegar ao km da próxima pelo ritmo de uso (`forecastDays`). Km já ultrapassado = hoje.
-- Itens do mesmo veículo com a mesma situação, km e data vencem juntos e aparecem num só alerta (`groupDue`).
+- Itens do mesmo veículo com a mesma situação, km e data vencem juntos e aparecem num só alerta (`groupDue`). Na tela,
+  itens com a mesma situação e o mesmo km da próxima também se juntam, mesmo que só alguns vençam por data (vale a mais cedo).
 - Itens sem km/data da última vez (SEM DADO) não geram alerta; a tela de Manutenção lista esses itens e permite
   informar a última revisão de vários de uma vez. Também é possível copiar o plano de outro veículo
   (`POST /maintenance/plan/copy`).
