@@ -29,7 +29,8 @@ export interface UsageOptions {
   longStopH?: number;
 }
 
-export const USAGE_BASE = ['brasilia, 201'];
+/** O rastreador às vezes grava a base sem o número: "Rua Brasília, São Cristóvão, Lages…". */
+export const USAGE_BASE = ['brasilia, 201', 'rua brasilia, sao cristovao'];
 export const SPEED_HIGH = 120;
 export const SPEED_SEVERE = 140;
 

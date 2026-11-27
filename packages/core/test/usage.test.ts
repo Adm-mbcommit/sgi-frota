@@ -32,6 +32,14 @@ describe('uso dos veículos (rastreador)', () => {
     expect(v.idleWorkdays).toBe(0);
   });
 
+  it('reconhece a base com ou sem o número', () => {
+    const U = analyzeUsage([
+      ev('2026-11-10T07:00:00', 0.5, 10, 80, 'x', 'Rua Brasília, São Cristóvão, Lages, SC, Brasil'),
+      ev('2026-11-10T09:00:00', 0.5, 10, 80, 'Rua Brasília, São Cristóvão, Lages, SC, Brasil', 'Rua Brasilia, 201, Lages'),
+    ], { from: '2026-11-10', to: '2026-11-10' }, 100, O);
+    expect(U.places.AAA1A11[0].atBase).toBe(true);
+  });
+
   it('endereço sem CEP e país', () => {
     expect(placeLabel('Rua X, 1 - Centro, Lages - SC, 88501-000, Brasil')).toBe('Rua X, 1 - Centro, Lages - SC');
     expect(placeLabel('Rua Brasilia, 201, São Cristóvão, Lages, SC, Brasil, 88509-200')).toBe('Rua Brasilia, 201, São Cristóvão, Lages, SC');
