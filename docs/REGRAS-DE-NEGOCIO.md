@@ -139,7 +139,9 @@ Regra em `packages/core/src/inspections.ts`:
 - Prazo: a cada `inspectionDays` dias (padrão **15**, quinzenal) contados da data da última vistoria do veículo;
   aviso `inspectionAlertDays` dias antes (padrão **3**). Situação: `EM_DIA`, `VENCENDO`, `ATRASADO` ou `NUNCA`.
   Os dois parâmetros ficam em Gestão → Parâmetros. Veículos com status INATIVO não entram no quadro.
-- Itens padrão (`INSPECTION_ITEMS`; sem o grupo Motor, que o usuário não confere), cada um com OK / Atenção / Problema / Não tem. Problema exige descrição
+- Itens padrão (`INSPECTION_ITEMS`; sem o grupo Motor, que o usuário não confere). Picapes (Saveiro: `isPickup`, pelo
+  nome/modelo) recebem também o grupo **Caçamba e capota** (lona, réguas, fixação, tampa, caçamba) e a foto da
+  caçamba com a capota; nos demais carros esses itens não aparecem. Cada item com OK / Atenção / Problema / Não tem. Problema exige descrição
   e abre uma **Pendência** do veículo (`tasks`); editar o checklist só abre pendência para problema novo.
 - Fotos pedidas (`INSPECTION_PHOTOS`): frente, traseira, laterais, painel e os 4 pneus (obrigatórias, mas a tela deixa salvar
   sem, avisando), interior e outras (opcionais). O navegador reduz cada foto (lado maior 1600 px, JPEG 80%,
