@@ -16,7 +16,6 @@ interface Usage {
   totals: Omit<UVehicle, 'plate' | 'name' | 'idleWorkdays' | 'maxSpeedAt'> & { withKm: number };
   vehicles: UVehicle[]; series: { key: string; name: string }[];
   monthly: { month: string; byVehicle: Record<string, { km: number; hours: number; offTrips: number; high: number }> }[];
-  daily: { date: string; km: number; offKm: number; trips: number }[];
   places: { plate: string; name: string; list: UPlace[] }[];
   overnights: { plate: string; name: string; place: string; nights: number; first: string; last: string; dates: string[] }[];
   longStops: { plate: string; name: string; place: string; from: string; to: string; hours: number }[];
@@ -53,31 +52,6 @@ function MonthChart({ data, series, metric }: { data: Usage['monthly']; series: 
             {ser.map((s, j) => { const v = val(m, s.key); const h = (v / top) * ch;
               return <rect key={s.key} x={x0 + j * bw + 1} y={T + ch - h} width={bw - 2} height={h} rx={2} fill={COLORS[series.indexOf(s) % 4]}><title>{s.name} · {MONTHS[+m.month.slice(5) - 1]}: {metric === 'hours' ? hm(v) : nf(v)}</title></rect>; })}
             <text x={L + gw * (i + 0.5)} y={H - 9} textAnchor="middle" fontSize="11" fill="var(--muted)">{MONTHS[+m.month.slice(5) - 1]}/{m.month.slice(2, 4)}</text>
-          </g>;
-        })}
-      </svg>
-    </>
-  );
-}
-
-function DailyChart({ data }: { data: Usage['daily'] }) {
-  if (!data.some((d) => d.km)) return <div className="note">Sem km registrado no período. Reimporte o relatório do Chronos com a coluna de distância.</div>;
-  const W = 760, H = 200, L = 42, B = 24, T = 10, R = 6, cw = W - L - R, ch = H - T - B;
-  const { top, step } = niceTop(Math.max(...data.map((d) => d.km)));
-  const bw = cw / data.length; const grid: number[] = []; for (let v = 0; v <= top; v += step) grid.push(v);
-  const every = Math.ceil(data.length / 12);
-  return (
-    <>
-      <div className="legend"><span><i style={{ background: 'var(--c1)' }} />No expediente</span><span><i style={{ background: 'var(--c2)' }} />Fora do expediente</span></div>
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Km por dia">
-        {grid.map((v) => { const y = T + ch - (v / top) * ch; return <g key={v}><line x1={L} x2={W - R} y1={y} y2={y} stroke="var(--line)" /><text x={L - 6} y={y + 4} textAnchor="end" fontSize="10" fill="var(--muted)">{nf(v)}</text></g>; })}
-        {data.map((d, i) => {
-          const x = L + bw * i + bw * 0.12, w = Math.max(1, bw * 0.76), hIn = ((d.km - d.offKm) / top) * ch, hOff = (d.offKm / top) * ch;
-          return <g key={d.date}>
-            <title>{fd(d.date)}: {nf(d.km)} km ({nf(d.offKm)} km fora do expediente), {d.trips} viagens</title>
-            <rect x={x} y={T + ch - hIn} width={w} height={hIn} fill="var(--c1)" />
-            <rect x={x} y={T + ch - hIn - hOff} width={w} height={hOff} fill="var(--c2)" />
-            {i % every === 0 && <text x={x + w / 2} y={H - 8} textAnchor="middle" fontSize="10" fill="var(--muted)">{d.date.slice(8)}/{d.date.slice(5, 7)}</text>}
           </g>;
         })}
       </svg>
@@ -147,13 +121,10 @@ export default function Uso() {
           { h: 'Noites fora', v: (r) => r.nightsAway, f: (r) => nf(r.nightsAway), n: true },
         ]} />
 
-        <div className="two">
-          <div><h2>Mês a mês por veículo</h2><div className="panel">
+        <h2>Mês a mês por veículo</h2><div className="panel" style={{ maxWidth: 760 }}>
             <div className="tools"><select aria-label="Indicador" value={metric} onChange={(e) => setMetric(e.target.value as Metric)}>{METRICS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></div>
             <MonthChart data={d.monthly} series={d.series} metric={metric} />
             <div className="note">Só os meses dentro do período escolhido. O mês corrente é parcial.</div>
-          </div></div>
-          <div><h2>Km por dia</h2><div className="panel"><DailyChart data={d.daily} /></div></div>
         </div>
 
         <h2>Onde cada veículo mais fica parado</h2>
