@@ -2,7 +2,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { inPeriod } from '@sgi/core';
+import { analyzeUsage, inPeriod, USAGE_BASE } from '@sgi/core';
 import { fuelings, trips, tasks } from '../db/schema.js';
 import { HttpError, notFound, parse, periodQuery, uuid } from '../plugins/http.js';
 import { WRITE_ROLES } from '../plugins/auth.js';
@@ -106,6 +106,25 @@ export default async function operationsRoutes(app: FastifyInstance) {
     const { analysis: A, cfg } = await run(req);
     return A.speed.filter((e) => inPeriod(e.startedAt, A.period) && (q.all === '1' || e.vmax > cfg.speed) && (!q.plate || e.plate === q.plate))
       .reverse().map((e) => ({ ...e, startedAt: iso(e.startedAt), vehicleName: A.vehicles.find((v) => v.plate === e.plate)?.name ?? null }));
+  });
+
+  /** Uso dos veículos pelo rastreador: fora do expediente, velocidade, paradas por local e pernoites. */
+  app.get('/usage', read, async (req) => {
+    const q = parse(listQuery, req.query);
+    const { analysis: A, cfg } = await run(req);
+    const ev = A.speed.filter((e) => !q.plate || e.plate === q.plate);
+    const U = analyzeUsage(ev, A.period, cfg.speed, { workStart: cfg.workStart, workEnd: cfg.workEnd, base: USAGE_BASE });
+    const name = (p: string) => A.vehicles.find((v) => v.plate === p)?.name ?? p;
+    return {
+      ...U,
+      vehicles: U.vehicles.map((v) => ({ ...v, name: name(v.plate), maxSpeedAt: iso(v.maxSpeedAt) })),
+      series: A.vehicles.map((v) => ({ key: v.plate, name: v.name })),
+      places: Object.entries(U.places).map(([plate, list]) => ({ plate, name: name(plate), list: list.map((p) => ({ ...p, longest: { ...p.longest, at: iso(p.longest.at) } })) })),
+      overnights: U.overnights.map((o) => ({ ...o, name: name(o.plate) })),
+      longStops: U.longStops.map((s) => ({ ...s, name: name(s.plate), from: iso(s.from), to: iso(s.to) })),
+      flagged: U.flagged.slice(0, 1000).map((t) => ({ ...t, name: name(t.plate), startedAt: iso(t.startedAt), endedAt: iso(t.endedAt) })),
+      lastAt: iso(A.speed.length ? Math.max(...A.speed.map((e) => e.startedAt)) : null),
+    };
   });
 
   app.get('/drivers/summary', read, async (req) => (await run(req)).analysis.drivers);

@@ -15,6 +15,7 @@ Datas de calendário em `AAAA-MM-DD`; instantes em ISO 8601. Listas aceitam `?fr
 | PATCH | /trips/:id | ADMIN, GESTOR | Corrigir registro |
 | GET / POST | /fuelings | todos / +MOTORISTA | Abastecimentos |
 | GET | /speed-events | todos | Excessos (`all=1` para todos os eventos) |
+| GET | /usage | todos | Uso dos veículos pelo rastreador (`from`, `to`, `plate`): fora do expediente, paradas por local, pernoites |
 | GET | /drivers/summary | todos | Atividade por motorista |
 | GET | /quality | todos | Verificação dos dados |
 | GET / POST / PATCH | /vehicles, /drivers, /stations | todos / ADMIN, GESTOR | Cadastros |

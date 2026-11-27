@@ -323,6 +323,33 @@ d('API', () => {
     await call('PUT', `/documents/${vehicleId}`, admin, { ...body, links: { crlv: '' } });
     expect((await call('GET', '/documents', admin)).json().find((x: { vehicleId: string }) => x.vehicleId === vehicleId).links.crlv).toBeUndefined();
   });
+  it('importa o Chronos com a distância (reimportar completa o km) e calcula o uso dos veículos', async () => {
+    const head = ['Unidade rastreada', 'Data inicial', 'Data final', 'Duração', 'Distância (km)', 'Vel. máxima', 'Vel. média', 'Endereço inicial', 'Endereço final'];
+    const base = 'Rua Brasília, 201 - São Cristóvão, Lages - SC';
+    const rows = [
+      ['TPR0F55', '10/11/2026 07:00:00', '10/11/2026 07:30:00', '00:30:00', 12, 90, 40, base, 'Rua Israel, 50 - Vila Mariza, Lages - SC'],
+      ['TPR0F55', '10/11/2026 12:00:00', '10/11/2026 12:30:00', '00:30:00', 12, 131, 50, 'Rua Israel, 50 - Vila Mariza, Lages - SC', 'Av. JK, 10 - Maria Luíza, Lages - SC'],
+      ['TPR0F55', '11/11/2026 21:00:00', '11/11/2026 21:15:00', '00:15:00', 4, 60, 30, 'Av. JK, 10 - Maria Luíza, Lages - SC', base],
+    ];
+    const up = async (withKm: boolean) => {
+      const wb = new ExcelJS.Workbook(); const ws = wb.addWorksheet('Relatório');
+      ws.addRow(['Períodos de utilização']); ws.addRow(withKm ? head : head.filter((h) => h !== 'Distância (km)'));
+      for (const r of rows) ws.addRow(withKm ? r : r.filter((_, i) => i !== 4));
+      const boundary = '----ch';
+      const payload = Buffer.concat([Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="Relatorio_Rastreamento.xlsx"\r\nContent-Type: application/octet-stream\r\n\r\n`),
+        Buffer.from(await wb.xlsx.writeBuffer()), Buffer.from(`\r\n--${boundary}--\r\n`)]);
+      return (await app.inject({ method: 'POST', url: '/api/v1/imports/chronos', headers: { authorization: 'Bearer ' + admin, 'content-type': `multipart/form-data; boundary=${boundary}` }, payload })).json();
+    };
+    expect(await up(false)).toMatchObject({ read: 3, inserted: 3 });
+    expect(await up(true)).toMatchObject({ read: 3, inserted: 0 });
+    const u = (await call('GET', '/usage?from=2026-11-10&to=2026-11-11&plate=TPR0F55', reader)).json();
+    expect(u.totals).toMatchObject({ trips: 3, km: 28, offTrips: 1, high: 1, nightsAway: 1 });
+    expect(u.overnights[0]).toMatchObject({ place: 'Av. JK, 10 - Maria Luíza, Lages - SC', nights: 1, first: '2026-11-10' });
+    expect(u.places[0].list[0]).toMatchObject({ place: 'Rua Israel, 50 - Vila Mariza, Lages - SC', atBase: false, stops: 1 });
+    expect(u.places[0].list[0].hours).toBeCloseTo(4.5);
+    expect(u.flagged).toHaveLength(2);
+  });
+
   it('importa os pagamentos do Mais Controle: sem combustível, sem duplicar e substituindo o mesmo serviço lançado antes', async () => {
     const legacy = (await call('POST', '/costs', admin, { date: '2026-09-04', vehicleId, category: 'Manutenção', description: '4ª REVISÃO', supplier: 'VIASERRA', amount: 2700 })).json();
     const legacy2 = (await call('POST', '/costs', admin, { date: '2026-09-04', vehicleId, category: 'Manutenção', description: 'Peças da revisão', supplier: 'VIASERRA', amount: null })).json();

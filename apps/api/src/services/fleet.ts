@@ -36,7 +36,7 @@ export async function loadFleetData(db: DB, orgId: string): Promise<LoadedFleet>
       startedAt: t.startedAt.getTime(), endedAt: t.endedAt?.getTime() ?? null, kmStart: t.kmStart, kmEnd: t.kmEnd, open: t.open, status: t.status })),
     fuel: fu.map((f) => ({ id: f.id, company: f.company, plate: P(f.vehicleId), driver: N(f.driverId), at: f.at.getTime(),
       km: f.km, liters: f.liters, total: f.total, station: f.station, fullTank: f.fullTank, notes: f.notes })),
-    speed: sp.map((e) => ({ id: e.id, plate: P(e.vehicleId), startedAt: e.startedAt.getTime(), durationH: e.durationH, vmax: e.vmax, vavg: e.vavg, from: e.addressStart, to: e.addressEnd })),
+    speed: sp.map((e) => ({ id: e.id, plate: P(e.vehicleId), startedAt: e.startedAt.getTime(), durationH: e.durationH, vmax: e.vmax, vavg: e.vavg, distanceKm: e.distanceKm, from: e.addressStart, to: e.addressEnd })),
     plan: pl.filter((p) => plateById.has(p.vehicleId)).map((p) => ({ id: p.id, plate: P(p.vehicleId)!, item: p.item, intervalKm: p.intervalKm, intervalMonths: p.intervalMonths,
       lastKm: p.lastKm, lastDate: p.lastDate, needsCheck: p.needsCheck, source: p.source })),
     docs: dc.filter((d) => plateById.has(d.vehicleId)).map((d) => ({ plate: P(d.vehicleId)!, crlv: d.crlv, ipva: d.ipva, licensing: d.licensing, insurance: d.insurance, confirmed: d.confirmed })),

@@ -22,7 +22,7 @@ export const MODULES: AppModule[] = [
       { to: '', label: 'Painel' }, { to: 'manutencao', label: 'Manutenção', badge: 'alerts' },
       { to: 'veiculos', label: 'Veículos' }, { to: 'motoristas', label: 'Motoristas' }, { to: 'documentos', label: 'Documentos' },
       'Registros',
-      { to: 'viagens', label: 'Viagens' }, { to: 'abastecimentos', label: 'Abastecimentos' }, { to: 'velocidade', label: 'Velocidade' }, { to: 'custos', label: 'Custos' },
+      { to: 'viagens', label: 'Viagens' }, { to: 'abastecimentos', label: 'Abastecimentos' }, { to: 'velocidade', label: 'Velocidade' }, { to: 'uso', label: 'Uso dos veículos' }, { to: 'custos', label: 'Custos' },
       'Gestão',
       { to: 'pendencias', label: 'Pendências', badge: 'tasks' }, { to: 'importacoes', label: 'Importações' },
       { to: 'parametros', label: 'Parâmetros', hide: ['MOTORISTA'] },
@@ -39,4 +39,4 @@ export const MODULES: AppModule[] = [
 export const SYSTEM_NAV: NavItem[] = [{ to: '/usuarios', label: 'Usuários', roles: ['ADMIN'] }];
 
 /** Caminhos antigos (antes dos módulos), para não quebrar favoritos. */
-export const LEGACY_FROTA_PATHS = ['manutencao', 'veiculos', 'motoristas', 'documentos', 'viagens', 'abastecimentos', 'velocidade', 'custos', 'pendencias', 'importacoes', 'parametros'];
+export const LEGACY_FROTA_PATHS = ['manutencao', 'veiculos', 'motoristas', 'documentos', 'viagens', 'abastecimentos', 'velocidade', 'uso', 'custos', 'pendencias', 'importacoes', 'parametros'];

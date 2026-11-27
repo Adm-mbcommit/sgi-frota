@@ -1,0 +1,1 @@
+ALTER TABLE "speed_events" ADD COLUMN "distance_km" double precision;

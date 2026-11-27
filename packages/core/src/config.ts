@@ -36,6 +36,10 @@ export interface FleetConfig {
   kmlMax: number;
   /** Janela (dias) usada para o ritmo de uso diário. */
   paceDays: number;
+  /** Início do expediente (horas; 6,5 = 06h30). Antes disso, viagem do rastreador conta como fora do horário. */
+  workStart: number;
+  /** Fim do expediente (horas; 19,5 = 19h30). */
+  workEnd: number;
   /** Postos cadastrados. */
   postos: string[];
 }
@@ -58,5 +62,7 @@ export const DEFAULT_CONFIG: FleetConfig = {
   kmlMin: 5,
   kmlMax: 20,
   paceDays: 60,
+  workStart: 6.5,
+  workEnd: 19.5,
   postos: ['Elefantinho'],
 };

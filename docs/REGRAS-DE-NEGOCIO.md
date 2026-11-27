@@ -47,6 +47,23 @@ Processadas em ordem cronológica.
 Eventos do Chronos com velocidade máxima > `speed`. O motorista é o da viagem da empresa em andamento
 naquele horário (saída ≤ evento ≤ chegada; viagem sem chegada vale por 24 h).
 
+## Uso dos veículos (rastreador)
+
+Tela Frota → Uso dos veículos (`analyzeUsage` em `packages/core/src/usage.ts`), a partir do relatório
+"Períodos de utilização (BDV)" do Chronos. Cada linha = um período de motor ligado ("viagem do rastreador").
+A importação guarda também a coluna de distância (`distance_km`); reimportar o mesmo arquivo completa o km
+de linhas antigas, sem duplicar.
+
+- **Fora do expediente**: viagem iniciada antes de `workStart` (6,5 = 06h30), a partir de `workEnd`
+  (19,5 = 19h30) ou no sábado/domingo. Horários em Gestão → Parâmetros.
+- **Velocidade**: conta acima de `speed` (parâmetro), de 120 e de 140 km/h.
+- **Parada**: intervalo entre o fim de uma viagem e o início da próxima no **mesmo dia**, no endereço final
+  da viagem; dividida em horas dentro e fora do expediente. Parada longa = 3 h ou mais fora da base.
+- **Pernoite**: a última viagem do dia termina fora da base e a próxima começa em outro dia; conta uma noite
+  por dia de calendário. Base = endereço que contém "Brasília, 201" (sem acento/maiúsculas; `USAGE_BASE`).
+- **Dias úteis parado**: segunda a sexta do período sem nenhuma viagem (feriados não são descontados).
+- O relatório não identifica o motorista.
+
 ## Manutenção
 
 Para cada item do plano: próxima = último km + intervalo km; vencimento = última data + intervalo em meses.

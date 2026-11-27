@@ -99,6 +99,13 @@
       "when": 1795790717191,
       "tag": "0013_revisoes_os_viaserra",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1795800229096,
+      "tag": "0014_rastreador_distancia",
+      "breakpoints": true
     }
   ]
 }
