@@ -23,12 +23,22 @@ export function StackChart({ data, series, unit = 'rs' }: { data: { month: strin
           const x = L + (cw / data.length) * (i + 0.5) - bw / 2; let acc = 0;
           return <g key={r.month}>
             {series.map((s, j) => { const v = r.byVehicle[s.key] ?? 0; const h = (v / top) * ch; const y = T + ch - (acc / top) * ch - h; acc += v;
-              return h > 0 ? <rect key={s.key} x={x} y={y} width={bw} height={h} fill={COLORS[j % 4]}><title>{s.name}: {val(v)}</title></rect> : null; })}
+              return h > 0 ? <g key={s.key}><rect x={x} y={y} width={bw} height={h} fill={COLORS[j % 4]}><title>{s.name}: {val(v)}</title></rect>
+                {h >= 13 && <text x={x + bw / 2} y={y + h / 2 + 3.5} textAnchor="middle" fontSize="9.5" fontWeight="600" fill="#fff" pointerEvents="none">{nf(Math.round(v))}</text>}</g> : null; })}
             <text x={x + bw / 2} y={H - 9} textAnchor="middle" fontSize="11" fill="var(--muted)">{MONTHS[Number(r.month.slice(5, 7)) - 1]}</text>
             <text x={x + bw / 2} y={T + ch - (acc / top) * ch - 4} textAnchor="middle" fontSize="10.5" fill="var(--fg)">{nf(acc)}</text>
           </g>;
         })}
       </svg>
+      <div className="tw chart-table"><table>
+        <thead><tr><th>{unit === 'km' ? 'Km' : 'R$'}</th>{data.map((r) => <th key={r.month} className="n">{MONTHS[Number(r.month.slice(5, 7)) - 1]}</th>)}<th className="n">Total</th></tr></thead>
+        <tbody>
+          {series.map((s, j) => <tr key={s.key}><td><i className="dot" style={{ background: COLORS[j % 4] }} />{s.name}</td>
+            {data.map((r) => <td key={r.month} className="n">{nf(Math.round(r.byVehicle[s.key] ?? 0))}</td>)}
+            <td className="n"><b>{nf(Math.round(data.reduce((a, r) => a + (r.byVehicle[s.key] ?? 0), 0)))}</b></td></tr>)}
+          <tr className="tot"><td><b>Total</b></td>{tot.map((t, i) => <td key={i} className="n"><b>{nf(Math.round(t))}</b></td>)}<td className="n"><b>{nf(Math.round(tot.reduce((a, b) => a + b, 0)))}</b></td></tr>
+        </tbody>
+      </table></div>
       <div className="note">O mês corrente é parcial. {unit === 'km' ? 'Km das viagens válidas do Comando de Bordo.' : 'Valores em reais.'}</div>
     </>
   );
