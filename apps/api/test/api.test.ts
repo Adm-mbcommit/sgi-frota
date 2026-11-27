@@ -459,7 +459,7 @@ d('API', () => {
     let board = (await call('GET', '/inspections/board', admin)).json();
     expect(board.vehicles.find((v: { vehicleId: string }) => v.vehicleId === vehicleId).status).toBe('NUNCA');
     const today = board.today as string;
-    const items = [{ key: 'pneus', status: 'PROBLEMA', note: 'Dianteiro esquerdo careca' }, { key: 'oleo', status: 'OK' }, { key: 'extra1', label: 'Adesivo da empresa', status: 'ATENCAO' }];
+    const items = [{ key: 'pneus', status: 'PROBLEMA', note: 'Dianteiro esquerdo careca' }, { key: 'farois', status: 'OK' }, { key: 'extra1', label: 'Adesivo da empresa', status: 'ATENCAO' }];
     expect((await call('POST', '/inspections', reader, { vehicleId, date: today, items })).statusCode).toBe(403);
     expect((await call('POST', '/inspections', admin, { vehicleId, date: '2999-01-01', items })).statusCode).toBe(400);
     const r = await call('POST', '/inspections', admin, { vehicleId, date: today, km: 46000, fuelLevel: '1/2', items });
