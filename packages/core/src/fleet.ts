@@ -219,6 +219,26 @@ export function monthlyFuel(i: FleetInputs, cfg: FleetConfig, now: number): { mo
   return out;
 }
 
+/**
+ * Km rodados por mês (YYYY-MM) e veículo, pelas viagens válidas da empresa (mês do início da viagem, horário de
+ * Brasília). Vai do primeiro mês com viagem válida até o mês de `now`, no máximo os últimos `months` meses.
+ */
+export function monthlyKm(i: FleetInputs, cfg: FleetConfig, now: number, months = 12): { month: string; byVehicle: Record<string, number> }[] {
+  const own = i.trips.filter((t) => t.company === cfg.empresa && t.valid && t.km != null);
+  if (!own.length) return [];
+  const last = localDate(now).slice(0, 7);
+  const floor = addMonths(last + '-01', -(months - 1)).slice(0, 7);
+  const firstTrip = localDate(Math.min(...own.map((t) => t.startedAt))).slice(0, 7);
+  const first = firstTrip > floor ? firstTrip : floor;
+  const out: { month: string; byVehicle: Record<string, number> }[] = [];
+  for (let m = first; m <= last; m = addMonths(m + '-01', 1).slice(0, 7)) {
+    const byVehicle: Record<string, number> = {};
+    for (const v of i.vehicles) byVehicle[v.plate] = Math.round(own.filter((t) => t.plate === v.plate && localDate(t.startedAt).startsWith(m)).reduce((a, t) => a + t.km!, 0));
+    out.push({ month: m, byVehicle });
+  }
+  return out;
+}
+
 /* ---------------- qualidade dos dados ---------------- */
 
 export function qualityReport(trips: AnalyzedTrip[], fuel: AnalyzedFueling[], cfg: FleetConfig): { label: string; count: number; level: 0 | 1 }[] {

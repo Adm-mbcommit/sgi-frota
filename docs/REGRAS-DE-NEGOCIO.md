@@ -30,6 +30,8 @@ Processadas em ordem cronológica.
 - **Salto de odômetro**: km inicial − maior km final válido anterior do veículo; alerta se |salto| > `jump`.
 - **Km atual do veículo**: maior entre os km finais válidos e os km iniciais com início válido.
 - **Ritmo de uso**: soma dos km válidos nos últimos `paceDays` dias ÷ `paceDays`.
+- **Km rodados por mês** (Painel, `monthlyKm`): soma dos km das viagens válidas da empresa pelo mês do início da
+  viagem (horário de Brasília), por veículo; do primeiro mês com viagem válida até o mês atual, no máximo 12 meses.
 - **Problemas** sinalizados: outra empresa, placa desconhecida, km inicial inválido/zerado/fora da faixa,
   viagem não encerrada, km final inválido/menor/fora da faixa, km acima do plausível, duração acima do limite, salto.
 

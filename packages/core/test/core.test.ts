@@ -82,3 +82,15 @@ describe('paridade com o snapshot do artefato (11/11/2026)', () => {
     expect(A.kpis.costPerKm).toBeGreaterThan(0);
   });
 });
+
+describe('km rodados por mês', () => {
+  it('soma as viagens válidas da empresa por mês e veículo, até o mês atual', () => {
+    const m = A.monthlyKm;
+    expect(m.length).toBeGreaterThan(0);
+    expect(m.length).toBeLessThanOrEqual(12);
+    expect(m[m.length - 1].month).toBe(localDate(NOW).slice(0, 7));
+    const own = A.trips.filter((t) => t.company === DEFAULT_CONFIG.empresa && t.valid && localDate(t.startedAt).startsWith('2026-10'));
+    const oct = m.find((x) => x.month === '2026-10')!;
+    expect(Object.values(oct.byVehicle).reduce((a, b) => a + b, 0)).toBeCloseTo(own.reduce((a, t) => a + t.km!, 0), -1);
+  });
+});
