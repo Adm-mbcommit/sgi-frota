@@ -5,7 +5,7 @@
 import type { Role } from './lib/auth';
 
 /** Item do menu: [caminho relativo ao módulo, rótulo, contador opcional] ou o título de um grupo. */
-export type NavItem = string | { to: string; label: string; badge?: 'alerts' | 'tasks' | 'cnds' | 'checklist'; roles?: Role[]; hide?: Role[] };
+export type NavItem = string | { to: string; label: string; badge?: 'alerts' | 'tasks' | 'cnds' | 'checklist' | 'docs'; roles?: Role[]; hide?: Role[] };
 
 export interface AppModule {
   id: string; name: string; path: string; nav: NavItem[];
@@ -20,7 +20,7 @@ export const MODULES: AppModule[] = [
     id: 'frota', name: 'Frota', path: '/frota', about: 'Veículos, motoristas, viagens, abastecimentos, manutenção e custos.',
     nav: [
       { to: '', label: 'Painel' }, { to: 'manutencao', label: 'Manutenção', badge: 'alerts' },
-      { to: 'veiculos', label: 'Veículos' }, { to: 'motoristas', label: 'Motoristas' }, { to: 'documentos', label: 'Documentos' },
+      { to: 'veiculos', label: 'Veículos', badge: 'docs' }, { to: 'motoristas', label: 'Motoristas' },
       { to: 'checklist', label: 'Checklist periódico', badge: 'checklist', hide: ['MOTORISTA'] },
       'Registros',
       { to: 'viagens', label: 'Viagens' }, { to: 'abastecimentos', label: 'Abastecimentos' }, { to: 'velocidade', label: 'Velocidade' }, { to: 'uso', label: 'Uso dos veículos' }, { to: 'custos', label: 'Custos' },

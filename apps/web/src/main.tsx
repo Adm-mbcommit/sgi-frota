@@ -9,7 +9,7 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import Painel from './pages/Painel';
 import Manutencao from './pages/Manutencao';
-import { Documentos, Motoristas, Veiculos } from './pages/Cadastros';
+import { Motoristas, Veiculos } from './pages/Cadastros';
 import { Abastecimentos, Velocidade, Viagens } from './pages/Registros';
 import { Custos, Importacoes, Pendencias, Usuarios } from './pages/Gestao';
 import { MinhaConta, Parametros } from './pages/Conta';
@@ -36,7 +36,7 @@ function Root() {
           <Route path="manutencao" element={<Manutencao />} />
           <Route path="veiculos" element={<Veiculos />} />
           <Route path="motoristas" element={<Motoristas />} />
-          <Route path="documentos" element={<Documentos />} />
+          <Route path="documentos" element={<Navigate to="/frota/veiculos" replace />} />
           {!can('MOTORISTA') && <Route path="checklist" element={<Checklist />} />}
           <Route path="viagens" element={<Viagens />} />
           <Route path="abastecimentos" element={<Abastecimentos />} />

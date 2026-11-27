@@ -122,6 +122,13 @@ tira o CONFIRMAR e, se houver valor, lança o custo em Custos.
 
 Próximo vencimento = menor data entre CRLV, IPVA, licenciamento e seguro.
 ATRASADO se já passou; PRÓXIMO se faltam ≤ `docDays` dias; OK caso contrário. A CNH segue a mesma regra.
+Cada documento também tem a sua situação própria (mostrada em Frota → Veículos → Documentos, com 📄 para o PDF no Drive).
+
+**Vencimento do CRLV (SC):** o CRLV não traz data de vencimento impressa; vale até o prazo do licenciamento do ano
+seguinte, que segue o final da placa: IPVA (cota única) no último dia do mês do final da placa (final 1 = janeiro…
+final 0 = outubro) e licenciamento dois meses depois (final 1 = 31/03, final 2 = 30/04, final 5 = 31/07).
+A migração `0016_crlvs_2026` gravou assim as datas dos CRLVs 2026 (pasta dos CRLVs no Drive). Confira quando o
+Detran-SC publicar o calendário oficial e marque "Datas conferidas".
 
 ## Checklist periódico (vistoria com fotos)
 
