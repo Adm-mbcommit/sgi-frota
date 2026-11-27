@@ -34,7 +34,7 @@ const METRICS: [Metric, string][] = [['km', 'Km rodados'], ['hours', 'Horas roda
 function MonthChart({ data, series, metric }: { data: Usage['monthly']; series: Usage['series']; metric: Metric }) {
   const ser = series.filter((s) => data.some((m) => m.byVehicle[s.key]));
   if (!data.length || !ser.length) return <div className="note">Sem dados do rastreador no período.</div>;
-  const W = 560, H = 240, L = 46, B = 28, T = 16, R = 8, cw = W - L - R, ch = H - T - B;
+  const W = 560, H = 240, L = 46, B = 28, T = 20, R = 8, cw = W - L - R, ch = H - T - B;
   const val = (m: Usage['monthly'][0], k: string) => m.byVehicle[k]?.[metric] ?? 0;
   const max = Math.max(...data.flatMap((m) => ser.map((s) => val(m, s.key))));
   if (!max) return <div className="note">Nada a mostrar para este indicador no período.</div>;
@@ -50,7 +50,11 @@ function MonthChart({ data, series, metric }: { data: Usage['monthly']; series: 
           const x0 = L + gw * i + (gw - bw * ser.length) / 2;
           return <g key={m.month}>
             {ser.map((s, j) => { const v = val(m, s.key); const h = (v / top) * ch;
-              return <rect key={s.key} x={x0 + j * bw + 1} y={T + ch - h} width={bw - 2} height={h} rx={2} fill={COLORS[series.indexOf(s) % 4]}><title>{s.name} · {MONTHS[+m.month.slice(5) - 1]}: {metric === 'hours' ? hm(v) : nf(v)}</title></rect>; })}
+              const cx = x0 + j * bw + bw / 2;
+              return <g key={s.key}>
+                <rect x={x0 + j * bw + 1} y={T + ch - h} width={bw - 2} height={h} rx={2} fill={COLORS[series.indexOf(s) % 4]}><title>{s.name} · {MONTHS[+m.month.slice(5) - 1]}: {metric === 'hours' ? hm(v) : nf(v)}</title></rect>
+                {v > 0 && <text x={cx} y={T + ch - h - 4} textAnchor="middle" fontSize={ser.length > 3 ? 9 : 10.5} fill="var(--fg)">{nf(v)}</text>}
+              </g>; })}
             <text x={L + gw * (i + 0.5)} y={H - 9} textAnchor="middle" fontSize="11" fill="var(--muted)">{MONTHS[+m.month.slice(5) - 1]}/{m.month.slice(2, 4)}</text>
           </g>;
         })}
@@ -154,7 +158,7 @@ export default function Uso() {
           { h: 'Duração', v: (r) => r.durationH, f: (r) => hm(r.durationH), n: true },
           { h: 'Origem', v: (r) => r.from, w: true }, { h: 'Destino', v: (r) => r.to, w: true },
         ]} />
-        <div className="note">Fora do expediente = viagem iniciada antes das {hm(d.options.workStart)}, a partir das {hm(d.options.workEnd)} ou no sábado e domingo (horários em Gestão → Parâmetros). A base é a Rua Brasília, 201. O relatório do Chronos não identifica o motorista.</div>
+        <div className="note">Fora do expediente = viagem iniciada antes das {hm(d.options.workStart)}, a partir das {hm(d.options.workEnd)} ou no sábado e domingo (horários em Gestão → Parâmetros). A base é a Rua Brasília, 201 (São Cristóvão). O relatório do Chronos não identifica o motorista.</div>
       </>}
     </>
   );

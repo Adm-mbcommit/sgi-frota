@@ -60,7 +60,7 @@ de linhas antigas, sem duplicar.
 - **Parada**: intervalo entre o fim de uma viagem e o início da próxima no **mesmo dia**, no endereço final
   da viagem; dividida em horas dentro e fora do expediente. Parada longa = 3 h ou mais fora da base.
 - **Pernoite**: a última viagem do dia termina fora da base e a próxima começa em outro dia; conta uma noite
-  por dia de calendário. Base = endereço que contém "Brasília, 201" (sem acento/maiúsculas; `USAGE_BASE`).
+  por dia de calendário. Base = endereço que contém "Brasília, 201" ou "Rua Brasília, São Cristóvão" (sem acento/maiúsculas; `USAGE_BASE`).
 - **Dias úteis parado**: segunda a sexta do período sem nenhuma viagem (feriados não são descontados).
 - O relatório não identifica o motorista.
 
