@@ -31,7 +31,7 @@ O sistema passou a se chamar **SGI Matias Brasil**, com um módulo por setor. Fr
 - [ ] Integração automática com o Mais Controle (se tiverem API)
 - [x] Alertas das próximas revisões na tela de Manutenção, no Calendário (🔧) e no Início
 - [ ] Alertas por e-mail/WhatsApp (manutenção, documentos, CNH, excesso de velocidade)
-- [x] Links dos PDFs dos documentos (CRLV 2026 dos 4 veículos já ligados ao Google Drive)
+- [x] Links dos PDFs dos documentos (CRLV 2026 dos 4 veículos já ligados ao Google Drive) e vencimentos dos CRLVs 2026 (tela Veículos)
 - [ ] Anexos (NF, CRLV, apólice) guardados no próprio SGI (hoje ficam no Drive)
 - [ ] Relatórios em PDF/Excel por período, veículo e motorista
 - [ ] Recuperação de senha por e-mail; autenticação em dois fatores para administradores

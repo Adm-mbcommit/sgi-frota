@@ -3,7 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { checklists, organizations, costCategories, costs, maintenancePlan, maintenanceRecords, tasks, vehicleDocuments, vehicles } from '../db/schema.js';
-import { daysBetween, kmOnDate } from '@sgi/core';
+import { daysBetween, deadlineStatus, kmOnDate } from '@sgi/core';
 import { HttpError, isoDate, notFound, parse, uuid } from '../plugins/http.js';
 import { WRITE_ROLES } from '../plugins/auth.js';
 import { analyzeOrg } from '../services/fleet.js';
@@ -174,12 +174,14 @@ export default async function managementRoutes(app: FastifyInstance) {
 
   /* ---- documentos ---- */
   app.get('/documents', read, async (req) => {
-    const [{ analysis: A, ids }, rows] = await Promise.all([analyzeOrg(db, req.user.org),
+    const [{ analysis: A, ids, cfg }, rows] = await Promise.all([analyzeOrg(db, req.user.org),
       db.select({ vehicleId: vehicleDocuments.vehicleId, links: vehicleDocuments.links }).from(vehicleDocuments).where(eq(vehicleDocuments.organizationId, req.user.org))]);
     const links = new Map(rows.map((r) => [r.vehicleId, r.links ?? {}]));
     return A.docs.map((d) => {
       const vehicleId = ids.vehicleByPlate.get(d.plate);
-      return { ...d, vehicleId, vehicleName: A.vehicles.find((v) => v.plate === d.plate)?.name, links: (vehicleId && links.get(vehicleId)) || {} };
+      // Situação de cada documento (CRLV, IPVA, licenciamento, seguro), para os cartões da tela.
+      const items = Object.fromEntries((['crlv', 'ipva', 'licensing', 'insurance'] as const).map((k) => [k, deadlineStatus(d[k], A.today, cfg)]));
+      return { ...d, vehicleId, vehicleName: A.vehicles.find((v) => v.plate === d.plate)?.name, links: (vehicleId && links.get(vehicleId)) || {}, items, alertDays: cfg.docDays };
     });
   });
 
