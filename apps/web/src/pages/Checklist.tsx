@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { inspectionTemplateFor } from '@sgi/core';
 import { api, apiBlob, uploadTo } from '../lib/api';
 import { fd, nf, todayIso } from '../lib/format';
 import { useAuth, WRITE } from '../lib/auth';
@@ -16,8 +17,8 @@ import { DataTable, Header, Loading } from '../components/ui';
 
 type Answer = 'OK' | 'ATENCAO' | 'PROBLEMA' | 'NA';
 type Due = 'EM_DIA' | 'VENCENDO' | 'ATRASADO' | 'NUNCA';
-interface ItemDef { key: string; group: string; label: string }
-interface PhotoSlot { key: string; label: string; required: boolean }
+interface ItemDef { key: string; group: string; label: string; pickup?: boolean }
+interface PhotoSlot { key: string; label: string; required: boolean; pickup?: boolean }
 interface Template { items: ItemDef[]; photos: PhotoSlot[]; fuelLevels: string[]; intervalDays: number; alertDays: number }
 interface BoardVehicle {
   vehicleId: string; name: string; plate: string; model: string | null; next: string | null; days: number | null; status: Due;
@@ -205,11 +206,14 @@ function InspectionForm({ tpl, vehicles, vehicleId, edit, onClose }: { tpl: Temp
   const [busy, setBusy] = useState(''); const [err, setErr] = useState('');
   useEffect(() => () => photos.forEach((p) => URL.revokeObjectURL(p.url)), []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const groups = useMemo(() => [...new Set(tpl.items.map((i) => i.group))], [tpl]);
   const vehicle = vehicles.find((v) => v.vehicleId === vid);
-  const missing = tpl.items.filter((i) => !ans[i.key]?.status);
+  // picapes (Saveiro) recebem também os itens e a foto de caçamba e capota
+  const items = useMemo(() => (vehicle ? inspectionTemplateFor(tpl.items, vehicle) : tpl.items.filter((i) => !i.pickup)), [tpl, vehicle]);
+  const slots = useMemo(() => (vehicle ? inspectionTemplateFor(tpl.photos, vehicle) : tpl.photos.filter((p) => !p.pickup)), [tpl, vehicle]);
+  const groups = useMemo(() => [...new Set(items.map((i) => i.group))], [items]);
+  const missing = items.filter((i) => !ans[i.key]?.status);
   const hasPhoto = (slot: string) => saved.some((p) => p.slot === slot) || photos.some((p) => p.slot === slot);
-  const missingPhotos = tpl.photos.filter((p) => p.required && !hasPhoto(p.key));
+  const missingPhotos = slots.filter((p) => p.required && !hasPhoto(p.key));
   const set = (key: string, patch: Partial<{ status: Answer; note: string }>) => setAns((a) => ({ ...a, [key]: { status: a[key]?.status, note: a[key]?.note ?? '', ...patch } }));
 
   const addPhotos = async (slot: string, files: FileList | null) => {
@@ -232,12 +236,12 @@ function InspectionForm({ tpl, vehicles, vehicleId, edit, onClose }: { tpl: Temp
     setErr('');
     if (!vid) return setErr('Escolha o veículo.');
     if (missing.length) return setErr(`Falta responder ${plural(missing.length, 'item', 'itens')}: ${missing.slice(0, 4).map((i) => i.label).join(', ')}${missing.length > 4 ? '…' : ''}. Use "Marcar o resto como OK" se estiver tudo certo.`);
-    const noNote = tpl.items.filter((i) => ans[i.key]?.status === 'PROBLEMA' && !ans[i.key]?.note.trim());
+    const noNote = items.filter((i) => ans[i.key]?.status === 'PROBLEMA' && !ans[i.key]?.note.trim());
     if (noNote.length) return setErr(`Descreva o problema em: ${noNote.map((i) => i.label).join(', ')}.`);
     if (missingPhotos.length && !confirm(`Faltam fotos: ${missingPhotos.map((p) => p.label).join(', ')}. Salvar mesmo assim?`)) return;
     const body = {
       date, km: km.trim() ? Math.round(Number(km.replace(/\./g, '').replace(',', '.'))) : null, fuelLevel: fuel || null, notes: notes.trim() || null,
-      items: tpl.items.map((i) => ({ key: i.key, status: ans[i.key].status, note: ans[i.key].note.trim() || null })),
+      items: items.map((i) => ({ key: i.key, status: ans[i.key].status, note: ans[i.key].note.trim() || null })),
     };
     if (body.km != null && !Number.isFinite(body.km)) return setErr('Km inválido.');
     setBusy('Salvando…');
@@ -283,7 +287,7 @@ function InspectionForm({ tpl, vehicles, vehicleId, edit, onClose }: { tpl: Temp
       <section className="panel">
         <h3 style={{ marginTop: 0 }}>1. Fotos</h3>
         <div className="insp-slots">
-          {tpl.photos.map((s) => {
+          {slots.map((s) => {
             const mine = photos.filter((p) => p.slot === s.key); const old = saved.filter((p) => p.slot === s.key);
             const done = mine.length + old.length > 0;
             return (
@@ -304,12 +308,12 @@ function InspectionForm({ tpl, vehicles, vehicleId, edit, onClose }: { tpl: Temp
 
       <section className="panel">
         <div className="insp-items-top">
-          <h3 style={{ margin: 0 }}>2. Itens <small className="note">({tpl.items.length - missing.length} de {tpl.items.length})</small></h3>
+          <h3 style={{ margin: 0 }}>2. Itens <small className="note">({items.length - missing.length} de {items.length})</small></h3>
           <button type="button" className="btn" disabled={!missing.length} onClick={() => missing.forEach((i) => set(i.key, { status: 'OK' }))}>Marcar o resto como OK</button>
         </div>
         {groups.map((g) => <div key={g} className="insp-group">
           <h4>{g}</h4>
-          {tpl.items.filter((i) => i.group === g).map((i) => {
+          {items.filter((i) => i.group === g).map((i) => {
             const a = ans[i.key];
             return (
               <div key={i.key} className={'insp-item' + (a?.status ? ' ' + ANSWER_CLS[a.status] : '')}>

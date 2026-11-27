@@ -11,7 +11,8 @@ import { addDays, daysBetween } from './dates.js';
 export const INSPECTION_ANSWERS = ['OK', 'ATENCAO', 'PROBLEMA', 'NA'] as const;
 export type InspectionAnswer = (typeof INSPECTION_ANSWERS)[number];
 
-export interface InspectionItemDef { key: string; group: string; label: string }
+/** `pickup`: só para picapes (Saveiro etc.); nos demais carros o item não aparece. */
+export interface InspectionItemDef { key: string; group: string; label: string; pickup?: boolean }
 
 /** Itens padrão da vistoria, agrupados como se percorre o carro. */
 export const INSPECTION_ITEMS: InspectionItemDef[] = [
@@ -24,6 +25,11 @@ export const INSPECTION_ITEMS: InspectionItemDef[] = [
   { group: 'Pneus', key: 'pneus', label: 'Pneus (desgaste e calibragem)' },
   { group: 'Pneus', key: 'estepe', label: 'Estepe' },
   { group: 'Pneus', key: 'ferramentas', label: 'Macaco, chave de roda e triângulo' },
+  { group: 'Caçamba e capota', key: 'lona', label: 'Lona da capota (rasgos, furos, desbotada)', pickup: true },
+  { group: 'Caçamba e capota', key: 'reguas', label: 'Réguas / travessas da capota (tortas, faltando)', pickup: true },
+  { group: 'Caçamba e capota', key: 'fixacao_lona', label: 'Fixação da lona (elásticos, ganchos, presilhas, trilhos)', pickup: true },
+  { group: 'Caçamba e capota', key: 'tampa_cacamba', label: 'Tampa traseira (abre, fecha e trava)', pickup: true },
+  { group: 'Caçamba e capota', key: 'cacamba', label: 'Caçamba (assoalho, protetor, ferrugem, limpa)', pickup: true },
   { group: 'Por dentro', key: 'painel', label: 'Painel sem luz de alerta acesa' },
   { group: 'Por dentro', key: 'cintos', label: 'Cintos de segurança' },
   { group: 'Por dentro', key: 'buzina', label: 'Buzina' },
@@ -33,7 +39,7 @@ export const INSPECTION_ITEMS: InspectionItemDef[] = [
   { group: 'Documentos', key: 'crlv', label: 'CRLV (documento) no veículo ou no celular' },
 ];
 
-export interface PhotoSlot { key: string; label: string; required: boolean }
+export interface PhotoSlot { key: string; label: string; required: boolean; pickup?: boolean }
 
 /** Fotos pedidas em toda vistoria. "Outras" (avarias, detalhes) são livres. */
 export const INSPECTION_PHOTOS: PhotoSlot[] = [
@@ -46,9 +52,18 @@ export const INSPECTION_PHOTOS: PhotoSlot[] = [
   { key: 'pneu_dd', label: 'Pneu dianteiro direito', required: true },
   { key: 'pneu_te', label: 'Pneu traseiro esquerdo', required: true },
   { key: 'pneu_td', label: 'Pneu traseiro direito', required: true },
+  { key: 'capota', label: 'Caçamba com a capota fechada', required: true, pickup: true },
   { key: 'interior', label: 'Interior', required: false },
   { key: 'outra', label: 'Outra (avaria, detalhe)', required: false },
 ];
+
+/** Picape (caçamba com capota): pelo nome ou modelo do veículo. */
+export const isPickup = (v: { name?: string | null; model?: string | null }) =>
+  /saveiro|strada|montana|oroch|toro|hilux|s-?10|ranger|amarok|frontier|l200|picape|pick-?up/i.test(`${v.name ?? ''} ${v.model ?? ''}`);
+
+/** Itens e fotos que valem para o veículo (picapes recebem os de caçamba e capota). */
+export const inspectionTemplateFor = <T extends { pickup?: boolean }>(list: T[], v: { name?: string | null; model?: string | null }) =>
+  list.filter((x) => !x.pickup || isPickup(v));
 
 export const FUEL_LEVELS = ['Reserva', '1/4', '1/2', '3/4', 'Cheio'] as const;
 
