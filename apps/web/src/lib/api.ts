@@ -27,6 +27,20 @@ export async function api<T = unknown>(path: string, init: RequestInit & { json?
   return data as T;
 }
 
+/** Arquivo protegido pelo login (ex.: foto do checklist), como Blob. */
+export async function apiBlob(path: string): Promise<Blob> {
+  const t = tokenStore.get();
+  const res = await fetch(BASE + path, { headers: t ? { authorization: 'Bearer ' + t } : {} });
+  if (!res.ok) throw new ApiError(res.status, 'error', 'Não foi possível abrir o arquivo.');
+  return res.blob();
+}
+
+/** Envia um arquivo (ou foto já reduzida) no campo "file". */
+export const uploadTo = <T = Record<string, unknown>>(path: string, blob: Blob, name: string) => {
+  const fd = new FormData(); fd.append('file', blob, name);
+  return api<T>(path, { method: 'POST', body: fd });
+};
+
 export const upload = (path: string, file: File) => {
   const fd = new FormData(); fd.append('file', file);
   return api<Record<string, unknown>>(path, { method: 'POST', body: fd });

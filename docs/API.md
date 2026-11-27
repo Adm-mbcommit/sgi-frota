@@ -77,6 +77,18 @@ Feriados nacionais são calculados no front (`nationalHolidays` do `@sgi/core`, 
 | GET | /certificates/sync/folders | chave `X-Sync-Token` | Pastas do Drive das empresas ativas `[{companyId, shortName, folderId}]` |
 | POST | /certificates/sync | chave `X-Sync-Token` | `{files: [{companyId, fileId, name, url}], contents?: {fileId: base64}}` → `{need, updated, unreadable}`; `need` = PDFs sem data no nome que a API quer ler |
 
+## Frota: checklist periódico (vistoria com fotos)
+
+| Método | Rota | Perfil | Observação |
+|---|---|---|---|
+| GET | /inspections/template | ADMIN, GESTOR, LEITOR | Itens, fotos pedidas, níveis de combustível, `intervalDays`, `alertDays` |
+| GET | /inspections/board | ADMIN, GESTOR, LEITOR | Cada veículo com a última vistoria, `next`, `days` e `status` (EM_DIA, VENCENDO, ATRASADO, NUNCA) |
+| GET | /inspections?vehicleId= | ADMIN, GESTOR, LEITOR | Histórico com contagem de OK/atenção/problemas e de fotos |
+| GET | /inspections/:id | ADMIN, GESTOR, LEITOR | Detalhe com itens e lista de fotos |
+| POST / PATCH / DELETE | /inspections(/:id) | ADMIN, GESTOR | `{vehicleId, date, km?, fuelLevel?, items: [{key, status, note?, label?}], notes?}`; responde `tasksCreated` |
+| POST | /inspections/:id/photos?slot=frente&caption= | ADMIN, GESTOR | multipart, campo `file` (JPG/PNG/WEBP, até 6 MB) |
+| GET / DELETE | /inspection-photos/:id | leitura / ADMIN, GESTOR | Devolve a imagem (precisa do token) |
+
 ## Manutenção (complemento)
 
 | Método | Rota | Perfil | Observação |

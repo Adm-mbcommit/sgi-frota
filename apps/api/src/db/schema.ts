@@ -10,13 +10,15 @@
  */
 import { sql } from 'drizzle-orm';
 import {
-  boolean, date, doublePrecision, index, integer, jsonb, numeric, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid,
+  boolean, customType, date, doublePrecision, index, integer, jsonb, numeric, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid,
 } from 'drizzle-orm/pg-core';
 
 const id = () => uuid('id').primaryKey().default(sql`gen_random_uuid()`);
 const org = () => uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' });
 const createdAt = () => timestamp('created_at', { withTimezone: true }).notNull().defaultNow();
 const updatedAt = () => timestamp('updated_at', { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date());
+/** Arquivo binário (fotos das vistorias). */
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => 'bytea' });
 const money = (name: string) => numeric(name, { precision: 12, scale: 2, mode: 'number' });
 
 export const roleEnum = pgEnum('role', ['ADMIN', 'GESTOR', 'MOTORISTA', 'LEITOR']);
@@ -399,3 +401,37 @@ export const certificates = pgTable('certificates', {
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 }, (t) => [uniqueIndex('certificates_company_kind_uq').on(t.companyId, t.kind), index('certificates_org_exp_idx').on(t.organizationId, t.expiresOn)]);
+
+/* ---------- frota: checklist periódico (vistoria com fotos, feito pela administração) ---------- */
+
+/** Vistoria de um veículo (quinzenal por padrão; prazo em @sgi/core: inspectionStatus). */
+export const inspections = pgTable('inspections', {
+  id: id(),
+  organizationId: org(),
+  vehicleId: uuid('vehicle_id').notNull().references(() => vehicles.id, { onDelete: 'cascade' }),
+  /** Data da vistoria (calendário, America/Sao_Paulo). */
+  date: date('date').notNull(),
+  km: integer('km'),
+  /** Nível do combustível (FUEL_LEVELS do @sgi/core). */
+  fuelLevel: text('fuel_level'),
+  /** Respostas: [{ key, label, group, status: OK|ATENCAO|PROBLEMA|NA, note }]. */
+  items: jsonb('items').$type<{ key: string; label: string; group: string; status: string; note: string | null }[]>().notNull().default([]),
+  notes: text('notes'),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+}, (t) => [index('inspections_org_vehicle_date_idx').on(t.organizationId, t.vehicleId, t.date)]);
+
+/** Fotos da vistoria, guardadas no próprio banco (já reduzidas no navegador, ~300 KB cada). */
+export const inspectionPhotos = pgTable('inspection_photos', {
+  id: id(),
+  organizationId: org(),
+  inspectionId: uuid('inspection_id').notNull().references(() => inspections.id, { onDelete: 'cascade' }),
+  /** Posição da foto (INSPECTION_PHOTOS do @sgi/core: frente, traseira…). */
+  slot: text('slot').notNull(),
+  caption: text('caption'),
+  mime: text('mime').notNull(),
+  size: integer('size').notNull(),
+  data: bytea('data').notNull(),
+  createdAt: createdAt(),
+}, (t) => [index('inspection_photos_insp_idx').on(t.inspectionId)]);

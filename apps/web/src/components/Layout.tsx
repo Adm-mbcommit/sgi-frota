@@ -8,6 +8,7 @@ import { MODULES, SYSTEM_NAV, type NavItem } from '../modules';
 import { dueInfo, useMyTasks } from '../pages/Tarefas';
 import { upcoming, useBirthdays } from '../pages/Calendario';
 import { certAlerts, useCertificates } from '../pages/Certidoes';
+import { inspectionAlerts, useInspectionBoard } from '../pages/Checklist';
 
 const ROLE: Record<string, string> = { ADMIN: 'Administrador', GESTOR: 'Gestor', MOTORISTA: 'Motorista', LEITOR: 'Leitura' };
 
@@ -20,9 +21,10 @@ export default function Layout() {
   const tasks = useMyTasks();
   const bdays = useBirthdays();
   const cnds = useCertificates();
+  const insp = useInspectionBoard();
   const bdayToday = upcoming(bdays.data ?? [], 0).some((e) => e.kind === 'birthday');
   const myLate = (tasks.data ?? []).filter((t) => dueInfo(t)?.cls === 'bad' || dueInfo(t)?.cls === 'warn').length;
-  const badge: Record<string, number> = { alerts: dash.data?.kpis.maintenanceAlerts ?? 0, tasks: dash.data?.openTasks.length ?? 0, cnds: certAlerts(cnds.data).length };
+  const badge: Record<string, number> = { alerts: dash.data?.kpis.maintenanceAlerts ?? 0, tasks: dash.data?.openTasks.length ?? 0, cnds: certAlerts(cnds.data).length, checklist: inspectionAlerts(insp.data).length };
   const visible = (it: NavItem) => typeof it === 'string' || ((!it.roles || can(...it.roles)) && !(it.hide && can(...it.hide)));
   const link = (it: Exclude<NavItem, string>, base: string) => {
     const to = it.to.startsWith('/') ? it.to : base + (it.to ? '/' + it.to : '');

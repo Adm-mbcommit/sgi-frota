@@ -453,4 +453,45 @@ d('API', () => {
     expect(k('MUNICIPAL').expiresOn).toBe('2026-12-31');
     expect((await call('GET', '/certificates/sync', admin)).json()).toMatchObject({ configured: true });
   });
+  it('checklist periódico: grava a vistoria, abre pendência do problema, guarda e devolve a foto', async () => {
+    const tpl = (await call('GET', '/inspections/template', admin)).json();
+    expect(tpl.intervalDays).toBe(15);
+    let board = (await call('GET', '/inspections/board', admin)).json();
+    expect(board.vehicles.find((v: { vehicleId: string }) => v.vehicleId === vehicleId).status).toBe('NUNCA');
+    const today = board.today as string;
+    const items = [{ key: 'pneus', status: 'PROBLEMA', note: 'Dianteiro esquerdo careca' }, { key: 'oleo', status: 'OK' }, { key: 'extra1', label: 'Adesivo da empresa', status: 'ATENCAO' }];
+    expect((await call('POST', '/inspections', reader, { vehicleId, date: today, items })).statusCode).toBe(403);
+    expect((await call('POST', '/inspections', admin, { vehicleId, date: '2999-01-01', items })).statusCode).toBe(400);
+    const r = await call('POST', '/inspections', admin, { vehicleId, date: today, km: 46000, fuelLevel: '1/2', items });
+    expect(r.statusCode).toBe(201);
+    const insp = r.json();
+    expect(insp.tasksCreated).toBe(1);
+    const t = (await call('GET', '/tasks', admin)).json().find((x: { title: string }) => x.title.endsWith('Pneus (desgaste e calibragem)'));
+    expect(t).toMatchObject({ vehicleId, status: 'ABERTO' });
+    expect(t.description).toContain('Dianteiro esquerdo careca');
+    // editar sem mudar o problema não duplica a pendência
+    expect((await call('PATCH', '/inspections/' + insp.id, admin, { items, notes: 'ok' })).json().tasksCreated).toBe(0);
+
+    const jpeg = Buffer.from('/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==', 'base64');
+    const b = '----sgi' + Date.now();
+    const payload = Buffer.concat([Buffer.from(`--${b}\r\nContent-Disposition: form-data; name="file"; filename="f.jpg"\r\nContent-Type: image/jpeg\r\n\r\n`), jpeg, Buffer.from(`\r\n--${b}--\r\n`)]);
+    const up = (slot: string, token = admin) => app.inject({ method: 'POST', url: `/api/v1/inspections/${insp.id}/photos?slot=${slot}`, headers: { authorization: 'Bearer ' + token, 'content-type': 'multipart/form-data; boundary=' + b }, payload });
+    expect((await up('frente', reader)).statusCode).toBe(403);
+    expect((await up('teto')).statusCode).toBe(400);
+    const ph = await up('frente');
+    expect(ph.statusCode).toBe(201);
+    const img = await call('GET', '/inspection-photos/' + ph.json().id, reader);
+    expect(img.headers['content-type']).toBe('image/jpeg');
+    expect(img.rawPayload.equals(jpeg)).toBe(true);
+
+    const det = (await call('GET', '/inspections/' + insp.id, reader)).json();
+    expect(det).toMatchObject({ km: 46000, fuelLevel: '1/2', userName: 'Admin', photos: [{ slot: 'frente' }] });
+    expect(det.items.find((i: { key: string }) => i.key === 'extra1')).toMatchObject({ label: 'Adesivo da empresa', group: 'Outros' });
+    board = (await call('GET', '/inspections/board', reader)).json();
+    expect(board.vehicles.find((v: { vehicleId: string }) => v.vehicleId === vehicleId)).toMatchObject({ status: 'EM_DIA', days: 15, last: { problems: 1, attention: 1, ok: 1, photoId: ph.json().id } });
+    expect((await call('GET', '/inspections', reader)).json()[0]).toMatchObject({ id: insp.id, photos: 1, problems: 1 });
+    expect((await call('PUT', '/settings', admin, { inspectionDays: 3, inspectionAlertDays: 3 })).statusCode).toBe(400);
+    expect((await call('DELETE', '/inspections/' + insp.id, admin)).statusCode).toBe(204);
+    expect((await call('GET', '/inspection-photos/' + ph.json().id, admin)).statusCode).toBe(404);
+  });
 });
