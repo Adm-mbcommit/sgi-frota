@@ -3,7 +3,9 @@ import { nf, rs } from '../lib/format';
 const COLORS = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)'];
 const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
-export function StackChart({ data, series }: { data: { month: string; byVehicle: Record<string, number> }[]; series: { key: string; name: string }[] }) {
+/** Barras empilhadas por mês e veículo. `unit`: reais (padrão) ou km. */
+export function StackChart({ data, series, unit = 'rs' }: { data: { month: string; byVehicle: Record<string, number> }[]; series: { key: string; name: string }[]; unit?: 'rs' | 'km' }) {
+  const val = (v: number) => (unit === 'km' ? `${nf(v)} km` : rs(v));
   const W = 520, H = 230, L = 48, B = 28, T = 14, R = 10, cw = W - L - R, ch = H - T - B;
   const tot = data.map((r) => series.reduce((a, s) => a + (r.byVehicle[s.key] ?? 0), 0));
   const max = Math.max(...tot, 1);
@@ -15,19 +17,29 @@ export function StackChart({ data, series }: { data: { month: string; byVehicle:
   return (
     <>
       <div className="legend">{series.map((s, j) => <span key={s.key}><i style={{ background: COLORS[j % 4] }} />{s.name}</span>)}</div>
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Gasto com combustível por mês e veículo, em reais">
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={unit === 'km' ? 'Km rodados por mês e veículo' : 'Gasto com combustível por mês e veículo, em reais'}>
         {grid.map((v) => { const y = T + ch - (v / top) * ch; return <g key={v}><line x1={L} x2={W - R} y1={y} y2={y} stroke="var(--line)" /><text x={L - 6} y={y + 4} textAnchor="end" fontSize="10.5" fill="var(--muted)">{nf(v)}</text></g>; })}
         {data.map((r, i) => {
           const x = L + (cw / data.length) * (i + 0.5) - bw / 2; let acc = 0;
           return <g key={r.month}>
             {series.map((s, j) => { const v = r.byVehicle[s.key] ?? 0; const h = (v / top) * ch; const y = T + ch - (acc / top) * ch - h; acc += v;
-              return h > 0 ? <rect key={s.key} x={x} y={y} width={bw} height={h} fill={COLORS[j % 4]}><title>{s.name}: {rs(v)}</title></rect> : null; })}
+              return h > 0 ? <g key={s.key}><rect x={x} y={y} width={bw} height={h} fill={COLORS[j % 4]}><title>{s.name}: {val(v)}</title></rect>
+                {h >= 13 && <text x={x + bw / 2} y={y + h / 2 + 3.5} textAnchor="middle" fontSize="9.5" fontWeight="600" fill="#fff" pointerEvents="none">{nf(Math.round(v))}</text>}</g> : null; })}
             <text x={x + bw / 2} y={H - 9} textAnchor="middle" fontSize="11" fill="var(--muted)">{MONTHS[Number(r.month.slice(5, 7)) - 1]}</text>
             <text x={x + bw / 2} y={T + ch - (acc / top) * ch - 4} textAnchor="middle" fontSize="10.5" fill="var(--fg)">{nf(acc)}</text>
           </g>;
         })}
       </svg>
-      <div className="note">O mês corrente é parcial. Valores em reais.</div>
+      <div className="tw chart-table"><table>
+        <thead><tr><th>{unit === 'km' ? 'Km' : 'R$'}</th>{data.map((r) => <th key={r.month} className="n">{MONTHS[Number(r.month.slice(5, 7)) - 1]}</th>)}<th className="n">Total</th></tr></thead>
+        <tbody>
+          {series.map((s, j) => <tr key={s.key}><td><i className="dot" style={{ background: COLORS[j % 4] }} />{s.name}</td>
+            {data.map((r) => <td key={r.month} className="n">{nf(Math.round(r.byVehicle[s.key] ?? 0))}</td>)}
+            <td className="n"><b>{nf(Math.round(data.reduce((a, r) => a + (r.byVehicle[s.key] ?? 0), 0)))}</b></td></tr>)}
+          <tr className="tot"><td><b>Total</b></td>{tot.map((t, i) => <td key={i} className="n"><b>{nf(Math.round(t))}</b></td>)}<td className="n"><b>{nf(Math.round(tot.reduce((a, b) => a + b, 0)))}</b></td></tr>
+        </tbody>
+      </table></div>
+      <div className="note">O mês corrente é parcial. {unit === 'km' ? 'Km das viagens válidas do Comando de Bordo.' : 'Valores em reais.'}</div>
     </>
   );
 }

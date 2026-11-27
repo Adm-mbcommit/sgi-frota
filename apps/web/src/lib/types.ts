@@ -14,7 +14,7 @@ export interface Dashboard {
   period: { from: string; to: string }; config: { speed: number };
   kpis: { trips: number; km: number; fuel: number; otherCosts: number; total: number; costPerKm: number | null; speedEvents: number; openTrips: number; maintenanceAlerts: number };
   vehicles: VehicleSummary[]; alerts: PlanItem[]; openTasks: Task[];
-  monthlyFuel: { month: string; byVehicle: Record<string, number> }[]; speedByDriver: { driver: string; count: number }[];
+  monthlyFuel: { month: string; byVehicle: Record<string, number> }[]; monthlyKm: { month: string; byVehicle: Record<string, number> }[]; speedByDriver: { driver: string; count: number }[];
   lastTripAt: string | null; lastSpeedAt: string | null;
 }
 export interface Trip { id: string; startedAt: string; endedAt: string | null; vehicleName: string | null; driver: string | null; driverRaw: string | null; kmStart: number | null; kmEnd: number | null; durationH: number | null; km: number | null; valid: boolean; open: boolean; problems: Problem[] }

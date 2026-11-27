@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { fdt, nf, rs, STATUS_LABEL } from '../lib/format';
 import { usePeriod } from '../lib/period';
 import type { Dashboard, PlanItem, VehicleSummary } from '../lib/types';
 import { Chip, Header, Kpi, Loading, PeriodPicker } from '../components/ui';
 import { Bars, StackChart } from '../components/charts';
-import { MaintenanceDialog } from './Manutencao';
+import { dueGroups, MaintenanceDialog } from './Manutencao';
 import { useAuth, WRITE } from '../lib/auth';
 
 export function VehicleCard({ v, worst }: { v: VehicleSummary; worst?: PlanItem }) {
@@ -31,7 +32,7 @@ export default function Painel() {
   const { qs } = usePeriod();
   const { can } = useAuth();
   const q = useQuery({ queryKey: ['dashboard', qs], queryFn: () => api<Dashboard>('/dashboard?' + qs) });
-  const [reg, setReg] = useState<PlanItem | null>(null);
+  const [reg, setReg] = useState<PlanItem[] | null>(null);
   const d = q.data;
   return (
     <>
@@ -52,18 +53,28 @@ export default function Painel() {
         <div className="cards">{d.vehicles.map((v) => <VehicleCard key={v.plate} v={v} worst={d.alerts.find((a) => a.plate === v.plate)} />)}</div>
         <h2>Ações necessárias</h2>
         <div className="panel todo">
-          {d.alerts.slice(0, 8).map((p) => <div key={p.id}><Chip s={p.status} /><span><b>{p.vehicleName}</b> · {p.item}{p.kmLeft != null && ` · ${nf(Math.abs(p.kmLeft))} km ${p.kmLeft < 0 ? 'além do previsto' : 'restantes'}`}
-            {can(...WRITE) && <button className="btn sm" onClick={() => setReg(p)}>Registrar</button>}</span></div>)}
+          {dueGroups(d.alerts).filter((g) => g.status !== 'CONFIRMAR').slice(0, 6).map((g) => {
+            const items = d.alerts.filter((p) => g.ids.includes(p.id));
+            return <div key={g.ids.join()}><Chip s={g.status} /><span><b>{items[0]?.vehicleName ?? g.plate}</b> · {g.items.join(', ')}{g.kmLeft != null && ` · ${nf(Math.abs(g.kmLeft))} km ${g.kmLeft < 0 ? 'além do previsto' : 'restantes'}`}
+              {can(...WRITE) && <button className="btn sm" onClick={() => setReg(items)}>Registrar</button>}</span></div>;
+          })}
+          {[...new Set(d.alerts.filter((p) => p.status === 'CONFIRMAR').map((p) => p.vehicleName))].map((name) => {
+            const items = d.alerts.filter((p) => p.status === 'CONFIRMAR' && p.vehicleName === name);
+            return <div key={'c' + name}><Chip s="CONFIRMAR" /><span><b>{name}</b> · {items.length} ite{items.length > 1 ? 'ns' : 'm'} para conferir: {items.map((p) => p.item).join(', ')} <Link className="btn sm" to="/frota/manutencao">Ver</Link></span></div>;
+          })}
           {!d.alerts.length && <div><span>Nenhuma manutenção pendente.</span></div>}
           {d.openTasks.slice(0, 4).map((t) => <div key={t.id}><Chip s="ABERTO" /><span><b>{t.title}</b></span><p>{t.description}</p></div>)}
         </div>
         <div className="two">
+          <div><h2>Km rodados por mês</h2><div className="panel"><StackChart unit="km" data={d.monthlyKm} series={d.vehicles.map((v) => ({ key: v.plate, name: v.name }))} /></div></div>
           <div><h2>Combustível por mês</h2><div className="panel"><StackChart data={d.monthlyFuel} series={d.vehicles.map((v) => ({ key: v.plate, name: v.name }))} /></div></div>
+        </div>
+        <div className="two">
           <div><h2>Velocidade por motorista</h2><div className="panel"><Bars items={d.speedByDriver.map((x) => ({ label: x.driver, value: x.count }))} />
             <div className="note">Excessos acima de {d.config.speed} km/h, com o motorista identificado pelo horário das viagens.</div></div></div>
         </div>
       </>}
-      {reg && <MaintenanceDialog items={[reg]} onClose={() => setReg(null)} />}
+      {reg && <MaintenanceDialog items={reg} onClose={() => setReg(null)} />}
     </>
   );
 }
