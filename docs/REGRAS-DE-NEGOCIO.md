@@ -123,6 +123,23 @@ tira o CONFIRMAR e, se houver valor, lança o custo em Custos.
 Próximo vencimento = menor data entre CRLV, IPVA, licenciamento e seguro.
 ATRASADO se já passou; PRÓXIMO se faltam ≤ `docDays` dias; OK caso contrário. A CNH segue a mesma regra.
 
+## Checklist periódico (vistoria com fotos)
+
+Feito pela administração no SGI (Frota → Checklist periódico); **não** é o checklist diário dos motoristas,
+que continua vindo do Comando de Bordo (tabela `checklists`). Tabelas `inspections` e `inspection_photos`.
+Regra em `packages/core/src/inspections.ts`:
+
+- Prazo: a cada `inspectionDays` dias (padrão **15**, quinzenal) contados da data da última vistoria do veículo;
+  aviso `inspectionAlertDays` dias antes (padrão **3**). Situação: `EM_DIA`, `VENCENDO`, `ATRASADO` ou `NUNCA`.
+  Os dois parâmetros ficam em Gestão → Parâmetros. Veículos com status INATIVO não entram no quadro.
+- Itens padrão (`INSPECTION_ITEMS`), cada um com OK / Atenção / Problema / Não tem. Problema exige descrição
+  e abre uma **Pendência** do veículo (`tasks`); editar o checklist só abre pendência para problema novo.
+- Fotos pedidas (`INSPECTION_PHOTOS`): frente, traseira, laterais e painel (obrigatórias, mas a tela deixa salvar
+  sem, avisando), interior e outras (opcionais). O navegador reduz cada foto (lado maior 1600 px, JPEG 80%,
+  ~200–400 KB) e envia uma por vez; ficam no banco (`bytea`). Estimativa: 4 veículos × 2 por mês × 6 fotos
+  ≈ 15 MB/mês no Neon.
+- Perfis: ADMIN e GESTOR fazem, editam e excluem; LEITOR consulta; MOTORISTA não vê.
+
 ## Certidões (CNDs) — Administrativo
 
 Uma certidão vigente por tipo e empresa (tabela `certificates`; renovar = atualizar a linha, o histórico fica em `audit_log`).

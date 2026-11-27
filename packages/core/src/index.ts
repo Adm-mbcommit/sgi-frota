@@ -13,3 +13,4 @@ export * from './maintenance.js';
 export * from './maiscontrole.js';
 export * from './certificates.js';
 export * from './usage.js';
+export * from './inspections.js';

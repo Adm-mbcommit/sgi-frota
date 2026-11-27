@@ -19,6 +19,7 @@ import Tarefas from './pages/Tarefas';
 import Calendario from './pages/Calendario';
 import Certidoes from './pages/Certidoes';
 import Uso from './pages/Uso';
+import Checklist from './pages/Checklist';
 
 const qc = new QueryClient({ defaultOptions: { queries: { staleTime: 60_000, refetchOnWindowFocus: true, retry: 1 } } });
 
@@ -36,6 +37,7 @@ function Root() {
           <Route path="veiculos" element={<Veiculos />} />
           <Route path="motoristas" element={<Motoristas />} />
           <Route path="documentos" element={<Documentos />} />
+          {!can('MOTORISTA') && <Route path="checklist" element={<Checklist />} />}
           <Route path="viagens" element={<Viagens />} />
           <Route path="abastecimentos" element={<Abastecimentos />} />
           <Route path="velocidade" element={<Velocidade />} />

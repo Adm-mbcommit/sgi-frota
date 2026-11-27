@@ -54,6 +54,10 @@ const GROUPS: { title: string; items: [key: string, label: string, unit: string,
     ['docDays', 'Avisar documentos e CNH com antecedência de', 'dias'],
     ['speed', 'Excesso de velocidade acima de', 'km/h'],
   ] },
+  { title: 'Checklist periódico (vistoria com fotos)', items: [
+    ['inspectionDays', 'Fazer o checklist de cada veículo a cada (15 = quinzenal)', 'dias'],
+    ['inspectionAlertDays', 'Avisar com antecedência de', 'dias'],
+  ] },
   { title: 'Uso dos veículos (rastreador)', items: [
     ['workStart', 'Início do expediente (6,5 = 06h30)', 'horas', '0.25'],
     ['workEnd', 'Fim do expediente (19,5 = 19h30)', 'horas', '0.25'],

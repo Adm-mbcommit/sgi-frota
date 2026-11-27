@@ -40,6 +40,10 @@ export interface FleetConfig {
   workStart: number;
   /** Fim do expediente (horas; 19,5 = 19h30). */
   workEnd: number;
+  /** Checklist periódico (vistoria com fotos): a cada quantos dias (15 = quinzenal). */
+  inspectionDays: number;
+  /** Avisar a vistoria com esta antecedência (dias). */
+  inspectionAlertDays: number;
   /** Postos cadastrados. */
   postos: string[];
 }
@@ -64,5 +68,7 @@ export const DEFAULT_CONFIG: FleetConfig = {
   paceDays: 60,
   workStart: 6.5,
   workEnd: 19.5,
+  inspectionDays: 15,
+  inspectionAlertDays: 3,
   postos: ['Elefantinho'],
 };
