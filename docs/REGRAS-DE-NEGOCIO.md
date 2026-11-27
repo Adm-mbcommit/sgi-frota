@@ -81,6 +81,8 @@ tira o CONFIRMAR e, se houver valor, lança o custo em Custos.
   A aba *Custos* entra em Custos sem duplicar (veículo, data e descrição) e as revisões viram registros no histórico.
 - **Avisos por km em degraus** (`kmAlertLevel`): faltando ≤ `kmAlert`, ≤ `kmAlert2` e ≤ `kmAlert3` km o alerta muda de
   nível (🟡 → 🟠 → 🔴); os três valores são ajustáveis em Parâmetros e precisam ir diminuindo.
+- Na tela, os itens CONFIRMAR ficam num cartão por veículo ("Para conferir"), separados dos alertas; o histórico
+  mostra uma linha por visita à oficina (veículo + dia), com os itens feitos.
 - As revisões previstas aparecem no Calendário (🔧; vencidas no dia de hoje) e o Início mostra vencidas, perto de
   vencer e para conferir.
 

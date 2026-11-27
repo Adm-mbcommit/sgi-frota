@@ -190,6 +190,40 @@ function GroupCard({ g, plan, cfg, onRegister }: { g: DueGroup; plan: PlanItem[]
   );
 }
 
+/** Itens a conferir de um veículo num cartão só (em vez de um cartão por data). */
+function ConfirmCard({ name, items, onFix }: { name: string; items: PlanItem[]; onFix?: (items: PlanItem[]) => void }) {
+  const sorted = [...items].sort((a, b) => (b.lastDate ?? '').localeCompare(a.lastDate ?? '') || a.item.localeCompare(b.item));
+  return (
+    <div className="due-card confirmar">
+      <div className="due-head"><b>{name}</b><Chip s="CONFIRMAR" /></div>
+      <div className="note">Confira na nota fiscal se estes itens foram mesmo feitos e quando:</div>
+      <ul className="conf-list">
+        {sorted.map((it) => (
+          <li key={it.id} title={it.source ?? undefined}><span>{it.item}</span>
+            <span className="note">{it.lastDate || it.lastKm != null ? [it.lastDate && fd(it.lastDate), it.lastKm != null && `km ${nf(it.lastKm)}`].filter(Boolean).join(' · ') : 'sem registro'}</span></li>
+        ))}
+      </ul>
+      {onFix && <button className="btn sm pri" onClick={() => onFix(items)}>Informar quando foi feito</button>}
+    </div>
+  );
+}
+
+interface Visit { key: string; date: string; vehicleName: string; km: number | null; items: string[]; supplier: string | null; invoice: string | null; notes: string[] }
+/** Junta o histórico por veículo e dia: uma linha por ida à oficina, com os itens feitos. */
+function visits(records: ServiceRecord[]): Visit[] {
+  const map = new Map<string, Visit>();
+  for (const r of records) {
+    const key = r.vehicleName + '|' + r.date;
+    let v = map.get(key);
+    if (!v) map.set(key, v = { key, date: r.date, vehicleName: r.vehicleName, km: r.km, items: [], supplier: r.supplier, invoice: r.invoice, notes: [] });
+    if (!v.items.includes(r.item)) v.items.push(r.item);
+    if (r.km != null && (v.km == null || r.km > v.km)) v.km = r.km;
+    v.supplier ??= r.supplier; v.invoice ??= r.invoice;
+    if (r.notes && !v.notes.includes(r.notes)) v.notes.push(r.notes);
+  }
+  return [...map.values()].sort((a, b) => b.date.localeCompare(a.date) || a.vehicleName.localeCompare(b.vehicleName));
+}
+
 export default function Manutencao() {
   const { can } = useAuth();
   const write = can(...WRITE);
@@ -225,7 +259,11 @@ export default function Manutencao() {
   const vehicles = (vq.data ?? []).filter((v) => v.active && v.status !== 'INATIVO');
   const groups = dueGroups(plan);
   const rankOf = (g: DueGroup) => (g.status === 'VENCIDO' ? 0 : g.status === 'ATENCAO' ? 1 + (g.kmLeft ?? 1e9) / 1e6 : 9);
-  const alerts = groups.filter((g) => g.status === 'VENCIDO' || g.status === 'ATENCAO' || g.status === 'CONFIRMAR').sort((a, b) => rankOf(a) - rankOf(b));
+  const alerts = groups.filter((g) => g.status === 'VENCIDO' || g.status === 'ATENCAO').sort((a, b) => rankOf(a) - rankOf(b));
+  const toConfirm = [...new Set(plan.filter((p) => p.status === 'CONFIRMAR').map((p) => p.vehicleId))]
+    .map((id) => ({ id, items: plan.filter((p) => p.vehicleId === id && p.status === 'CONFIRMAR') }));
+  const history = visits(rq.data ?? []);
+  const planRows = [...plan].sort((a, b) => a.vehicleName.localeCompare(b.vehicleName) || (a.intervalKm ?? 1e9) - (b.intervalKm ?? 1e9) || a.item.localeCompare(b.item));
   const withPlan = new Set(plan.map((p) => p.vehicleId));
   const noPlan = vehicles.filter((v) => !withPlan.has(v.id));
   const noData = vehicles.map((v) => ({ v, items: plan.filter((p) => p.vehicleId === v.id && p.status === 'SEM_DADO') })).filter((x) => x.items.length);
@@ -250,6 +288,11 @@ export default function Manutencao() {
         {alerts.length
           ? <div className="due-grid">{alerts.map((g, i) => <GroupCard key={i} g={g} plan={plan} cfg={kmCfg} onRegister={write ? setReg : undefined} />)}</div>
           : <div className="banner ok-banner">Nenhuma revisão vencida ou perto de vencer. ✅</div>}
+
+        {toConfirm.length > 0 && <>
+          <h2>❓ Para conferir <span className="count-pill">{toConfirm.reduce((n, x) => n + x.items.length, 0)}</span></h2>
+          <div className="due-grid">{toConfirm.map((x) => <ConfirmCard key={x.id} name={x.items[0].vehicleName} items={x.items} onFix={write ? (items) => setSvc({ items }) : undefined} />)}</div>
+        </>}
 
         {(hq.data?.length ?? 0) > 0 && <>
           <h2>🧾 Serviços já feitos para lançar no plano <span className="count-pill">{hq.data!.length}</span></h2>
@@ -310,21 +353,23 @@ export default function Manutencao() {
           ))}</tbody>
         </table></div>
 
-        <details className="done-box"><summary>📜 Histórico de serviços ({rq.data?.length ?? 0})</summary>
-          {rq.data && <DataTable rows={rq.data} filter={{ label: 'Todos os veículos', v: (r) => r.vehicleName }} cols={[
-            { h: 'Data', v: (r) => r.date, f: (r) => fd(r.date) }, { h: 'Veículo', v: (r) => r.vehicleName }, { h: 'Item', v: (r) => r.item },
-            { h: 'Km', v: (r) => r.km, f: (r) => nf(r.km), n: true }, { h: 'Oficina', v: (r) => r.supplier }, { h: 'NF', v: (r) => r.invoice }, { h: 'Observação', v: (r) => r.notes, w: true },
+        <details className="done-box"><summary>📜 Histórico de serviços ({history.length} {history.length === 1 ? 'visita' : 'visitas'} à oficina)</summary>
+          {rq.data && <DataTable rows={history} filter={{ label: 'Todos os veículos', v: (r) => r.vehicleName }} cols={[
+            { h: 'Data', v: (r) => r.date, f: (r) => fd(r.date) }, { h: 'Veículo', v: (r) => r.vehicleName },
+            { h: 'Km', v: (r) => r.km, f: (r) => nf(r.km), n: true },
+            { h: 'O que foi feito', v: (r) => r.items.join(', '), f: (r) => <span className="tag-list">{r.items.map((i) => <span key={i} className="tag">{i}</span>)}</span>, w: true },
+            { h: 'Oficina', v: (r) => r.supplier }, { h: 'NF', v: (r) => r.invoice },
+            { h: 'Obs.', v: (r) => r.notes.join(' · '), f: (r) => r.notes.length ? <span className="note" title={r.notes.join('\n')}>ℹ️ {r.notes.length > 1 ? `${r.notes.length} observações` : 'ver'}</span> : null },
           ]} />}
         </details>
 
         <details className="done-box"><summary>Todos os itens do plano ({plan.length}) — ver, editar ou registrar um item</summary>
-        <DataTable rows={plan} filter={{ label: 'Todos os veículos', v: (r) => r.vehicleName }} cols={[
-          { h: 'Veículo', v: (r) => r.vehicleName }, { h: 'Item', v: (r) => r.item }, { h: 'Status', v: (r) => r.status, f: (r) => <Chip s={r.status} /> },
+        <DataTable rows={planRows} filter={{ label: 'Todos os veículos', v: (r) => r.vehicleName }} cols={[
+          { h: 'Veículo', v: (r) => r.vehicleName }, { h: 'Item', v: (r) => r.item, f: (r) => <span title={r.source ?? undefined}>{r.item}</span> }, { h: 'Status', v: (r) => r.status, f: (r) => <Chip s={r.status} /> },
           { h: 'Intervalo', v: (r) => r.intervalKm, f: (r) => [r.intervalKm && nf(r.intervalKm) + ' km', r.intervalMonths && r.intervalMonths + ' meses'].filter(Boolean).join(' ou ') },
           { h: 'Última', v: (r) => r.lastKm, f: (r) => [r.lastKm != null && nf(r.lastKm) + ' km', r.lastDate && fd(r.lastDate)].filter(Boolean).join(' · ') },
           { h: 'Próxima (km)', v: (r) => r.nextKm, f: (r) => nf(r.nextKm), n: true },
           { h: 'Km restante', v: (r) => r.kmLeft, f: (r) => nf(r.kmLeft), n: true }, { h: 'Vence em', v: (r) => r.dueDate, f: (r) => fd(r.dueDate) },
-          { h: 'Fonte', v: (r) => r.source, w: true },
           { h: '', v: () => '', f: (r) => write && <span style={{ display: 'flex', gap: 4 }}><button className="btn sm" onClick={() => setReg([r])}>Registrar</button><button className="btn sm" onClick={() => setEdit(r)}>Editar</button></span> },
         ]} />
         </details>
@@ -354,7 +399,7 @@ export function MaintenanceSummary() {
   };
   return (
     <div className={'banner cal-banner' + (late.length ? ' bad-banner' : '')}>
-      <span>🔧 <b>Manutenção:</b> {[late.length && `${late.length} vencida(s): ${late.map(desc).join(', ')}`, soon.length && `${soon.length} perto de vencer: ${soon.map(desc).join(', ')}`, conf.length && `${conf.length} para conferir`].filter(Boolean).join(' · ')}</span>
+      <span>🔧 <b>Manutenção:</b> {[late.length && `${late.length} vencida(s): ${late.map(desc).join(', ')}`, soon.length && `${soon.length} perto de vencer: ${soon.map(desc).join(', ')}`, conf.length && `${conf.reduce((n, x) => n + x.items.length, 0)} item(ns) para conferir`].filter(Boolean).join(' · ')}</span>
       <Link className="btn sm" to="/frota/manutencao">Ver manutenção</Link>
     </div>
   );
