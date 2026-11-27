@@ -385,3 +385,16 @@ button.day-item{background:var(--b-appt);border-left:3px solid var(--ev-appt)}
   .cnd-todo-act{justify-content:flex-start}
   .cnd-cos{grid-template-columns:1fr}
 }
+
+/* Manutenção: itens a conferir num cartão por veículo; histórico por visita */
+.conf-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;font-size:13px}
+.conf-list li{display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px dashed var(--line)}
+.conf-list li .note{margin:0;white-space:nowrap;text-align:right}
+.conf-list li:last-child{border-bottom:0}
+.tag-list{display:flex;flex-wrap:wrap;gap:4px}
+.tag{font-size:11.5px;border:1px solid var(--line);border-radius:4px;padding:1px 6px;background:var(--surface);white-space:nowrap}
+
+/* tabela abaixo dos gráficos por mês */
+.chart-table{margin-top:10px}.chart-table table{font-size:12px}.chart-table th,.chart-table td{padding:5px 8px;white-space:nowrap}
+.chart-table .dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.chart-table .tot td{border-top:1px solid var(--line)}

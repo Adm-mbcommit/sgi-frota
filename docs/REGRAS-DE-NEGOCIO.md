@@ -30,6 +30,8 @@ Processadas em ordem cronológica.
 - **Salto de odômetro**: km inicial − maior km final válido anterior do veículo; alerta se |salto| > `jump`.
 - **Km atual do veículo**: maior entre os km finais válidos e os km iniciais com início válido.
 - **Ritmo de uso**: soma dos km válidos nos últimos `paceDays` dias ÷ `paceDays`.
+- **Km rodados por mês** (Painel, `monthlyKm`): soma dos km das viagens válidas da empresa pelo mês do início da
+  viagem (horário de Brasília), por veículo; do primeiro mês com viagem válida até o mês atual, no máximo 12 meses.
 - **Problemas** sinalizados: outra empresa, placa desconhecida, km inicial inválido/zerado/fora da faixa,
   viagem não encerrada, km final inválido/menor/fora da faixa, km acima do plausível, duração acima do limite, salto.
 
@@ -65,7 +67,8 @@ tira o CONFIRMAR e, se houver valor, lança o custo em Custos.
 `@sgi/core` → `maintenance.ts`:
 - **Data esperada** de cada item = a mais cedo entre a data limite (última data + meses) e a data em que o veículo
   deve chegar ao km da próxima pelo ritmo de uso (`forecastDays`). Km já ultrapassado = hoje.
-- Itens do mesmo veículo com a mesma situação, km e data vencem juntos e aparecem num só alerta (`groupDue`).
+- Itens do mesmo veículo com a mesma situação, km e data vencem juntos e aparecem num só alerta (`groupDue`). Na tela,
+  itens com a mesma situação e o mesmo km da próxima também se juntam, mesmo que só alguns vençam por data (vale a mais cedo).
 - Itens sem km/data da última vez (SEM DADO) não geram alerta; a tela de Manutenção lista esses itens e permite
   informar a última revisão de vários de uma vez. Também é possível copiar o plano de outro veículo
   (`POST /maintenance/plan/copy`).
@@ -81,6 +84,8 @@ tira o CONFIRMAR e, se houver valor, lança o custo em Custos.
   A aba *Custos* entra em Custos sem duplicar (veículo, data e descrição) e as revisões viram registros no histórico.
 - **Avisos por km em degraus** (`kmAlertLevel`): faltando ≤ `kmAlert`, ≤ `kmAlert2` e ≤ `kmAlert3` km o alerta muda de
   nível (🟡 → 🟠 → 🔴); os três valores são ajustáveis em Parâmetros e precisam ir diminuindo.
+- Na tela, os itens CONFIRMAR ficam num cartão por veículo ("Para conferir"), separados dos alertas; o histórico
+  mostra uma linha por visita à oficina (veículo + dia), com os itens feitos.
 - As revisões previstas aparecem no Calendário (🔧; vencidas no dia de hoje) e o Início mostra vencidas, perto de
   vencer e para conferir.
 

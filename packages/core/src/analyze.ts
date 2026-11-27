@@ -3,7 +3,7 @@ import type { CostInput, DriverInput, FuelingInput, PlanItemInput, SpeedEventInp
 import { analyzeTrips } from './trips.js';
 import { analyzeFuel } from './fuel.js';
 import {
-  attributeSpeedEvents, documentsStatus, kpis, maintenanceAlerts, maintenanceStatus, monthlyFuel,
+  attributeSpeedEvents, documentsStatus, kpis, maintenanceAlerts, maintenanceStatus, monthlyFuel, monthlyKm,
   qualityReport, summarizeDrivers, summarizeVehicles, vehicleStates, type FleetInputs,
 } from './fleet.js';
 import { localDate, type Period } from './dates.js';
@@ -37,6 +37,7 @@ export function analyzeFleet(data: FleetData, cfg: FleetConfig, period: Period, 
     drivers: summarizeDrivers(inputs, period, today, cfg),
     kpis: kpis(inputs, vehicles, period, cfg),
     monthlyFuel: monthlyFuel(inputs, cfg, now),
+    monthlyKm: monthlyKm(inputs, cfg, now),
     quality: qualityReport(trips, fuel, cfg),
   };
 }
